@@ -29,6 +29,7 @@ class LibrarySettingsSerializer(serializers.ModelSerializer):
             "sync_interval_minutes",
             "loyalty_points_per_1000",
             "loyalty_point_value",
+            "online_deposit_percent",
             "price_rounding",
             "currency",
             "sync_version",
@@ -45,5 +46,6 @@ class PublicLibrarySettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LibrarySettings
-        fields = ["name", "logo", "address", "city", "phone", "email", "website", "order_expiry_hours"]
+        fields = ["name", "logo", "address", "city", "phone", "email", "website", "order_expiry_hours",
+                  "online_deposit_percent"]
         read_only_fields = fields

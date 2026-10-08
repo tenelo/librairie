@@ -10,6 +10,9 @@
       <mat-icon>qr_code_scanner</mat-icon>
       <input #searchBox type="text" [(ngModel)]="term" (input)="search()" (keydown.enter)="onEnter()"
              placeholder="Rechercher ou scanner (F2)" aria-label="Rechercher ou scanner un article" autocomplete="off" />
+      <button mat-stroked-button type="button" (click)="pickup()" matTooltip="Retrait d'une commande en ligne (QR code ou code)">
+        <mat-icon>shopping_bag</mat-icon> Retrait commande
+      </button>
     </div>
 
     @if (results().length) {
@@ -57,6 +60,13 @@
   </section>
 
   <section class="cart">
+    @if (onlineOrder(); as o) {
+      <div class="online-order" role="status">
+        <mat-icon>shopping_bag</mat-icon>
+        <span>Retrait de la commande <strong>{{ o.number }}</strong>@if (o.deposit) { · acompte payé {{ o.deposit | fcfa }} }</span>
+        <button mat-button type="button" (click)="reset()">Abandonner</button>
+      </div>
+    }
     <div class="customer">
       @if (customer(); as c) {
         <div class="chosen">
@@ -92,15 +102,19 @@
               }</small>
             @if (line.kitAdjustments) { <small class="kit-note">Kit personnalisé</small> }
           </div>
-          <div class="qty">
-            <button mat-icon-button type="button" (click)="setQuantity(line, line.quantity - 1)" aria-label="Diminuer"><mat-icon>remove</mat-icon></button>
-            <input type="number" min="1" [value]="line.quantity" (change)="setQuantity(line, $any($event.target).value)"
-                   [attr.aria-label]="'Quantité ' + line.description" />
-            <button mat-icon-button type="button" (click)="setQuantity(line, line.quantity + 1)" aria-label="Augmenter"><mat-icon>add</mat-icon></button>
-          </div>
+          @if (onlineOrder()) {
+            <div class="qty">× {{ line.quantity }}</div>
+          } @else {
+            <div class="qty">
+              <button mat-icon-button type="button" (click)="setQuantity(line, line.quantity - 1)" aria-label="Diminuer"><mat-icon>remove</mat-icon></button>
+              <input type="number" min="1" [value]="line.quantity" (change)="setQuantity(line, $any($event.target).value)"
+                     [attr.aria-label]="'Quantité ' + line.description" />
+              <button mat-icon-button type="button" (click)="setQuantity(line, line.quantity + 1)" aria-label="Augmenter"><mat-icon>add</mat-icon></button>
+            </div>
+          }
           <div class="amount">{{ lineTotal(line) | fcfa }}
             @if (line.discount) { <small>−{{ line.discount | fcfa }}</small> }</div>
-          <button mat-icon-button type="button" [matMenuTriggerFor]="lineMenu" aria-label="Options de la ligne"><mat-icon>more_vert</mat-icon></button>
+          <button mat-icon-button type="button" [matMenuTriggerFor]="lineMenu" aria-label="Options de la ligne" [disabled]="!!onlineOrder()"><mat-icon>more_vert</mat-icon></button>
           <mat-menu #lineMenu="matMenu">
             @if (line.article.type === 'KIT') {
               <button mat-menu-item type="button" (click)="customize(line)"><mat-icon>tune</mat-icon> Personnaliser le kit</button>
@@ -140,7 +154,7 @@
 
     <div class="actions">
       <button mat-stroked-button type="button" (click)="reset()" [disabled]="!lines().length">Annuler</button>
-      <button mat-stroked-button type="button" (click)="hold()" [disabled]="!lines().length">En attente (F4)</button>
+      <button mat-stroked-button type="button" (click)="hold()" [disabled]="!lines().length || !!onlineOrder()">En attente (F4)</button>
       <button mat-flat-button type="button" class="pay" (click)="pay()" [disabled]="!lines().length || busy()">
         <mat-icon>payments</mat-icon> Encaisser (F9)
       </button>

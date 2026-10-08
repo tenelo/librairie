@@ -7,6 +7,8 @@ export interface PublicLibrarySettings {
   email: string;
   website: string;
   order_expiry_hours: number;
+  /** Acompte Mobile Money proposé à la commande en ligne (0 : paiement au retrait uniquement). */
+  online_deposit_percent: number;
 }
 
 export interface LibrarySettings extends PublicLibrarySettings {

@@ -17,6 +17,28 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/catalog/catalog.page').then((m) => m.CatalogPage),
       },
       {
+        path: 'kits',
+        title: 'Kits scolaires · Librairie',
+        loadComponent: () => import('./pages/catalog/kits.page').then((m) => m.KitsPage),
+      },
+      {
+        path: 'panier',
+        title: 'Mon panier · Librairie',
+        loadComponent: () => import('./pages/orders/cart.page').then((m) => m.CartPage),
+      },
+      {
+        path: 'mes-commandes',
+        title: 'Mes commandes · Librairie',
+        canActivate: [authGuard],
+        loadComponent: () => import('./pages/orders/orders.page').then((m) => m.OrdersPage),
+      },
+      {
+        path: 'mes-commandes/:id',
+        title: 'Suivi de commande · Librairie',
+        canActivate: [authGuard],
+        loadComponent: () => import('./pages/orders/order.page').then((m) => m.OrderPage),
+      },
+      {
         path: 'connexion',
         title: 'Connexion · Librairie',
         canMatch: [guestGuard],

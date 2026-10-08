@@ -49,11 +49,11 @@ export const MENU: MenuSection[] = [
     icon: 'shopping_bag',
     path: 'commandes',
     children: [
-      { label: 'À confirmer', path: 'a-confirmer', permission: 'orders.confirm', phase: 7 },
-      { label: 'À préparer', path: 'a-preparer', permission: 'orders.prepare', phase: 7 },
-      { label: 'Prêtes', path: 'pretes', permission: 'orders.view', phase: 7 },
-      { label: 'Retirées', path: 'retirees', permission: 'orders.view', phase: 7 },
-      { label: 'Annulées / Expirées', path: 'annulees', permission: 'orders.view', phase: 7 },
+      { label: 'À confirmer', path: 'a-confirmer', permission: 'orders.confirm' },
+      { label: 'À préparer', path: 'a-preparer', permission: 'orders.prepare' },
+      { label: 'Prêtes', path: 'pretes', permission: 'orders.view' },
+      { label: 'Retirées', path: 'retirees', permission: 'orders.view' },
+      { label: 'Annulées / Expirées', path: 'annulees', permission: 'orders.view' },
     ],
   },
   {

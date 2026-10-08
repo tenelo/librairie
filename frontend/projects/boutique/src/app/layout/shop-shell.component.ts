@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatBadgeModule } from '@angular/material/badge';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, NetworkIndicatorComponent } from '@librairie/shared';
 
+import { CartService } from '../services/cart.service';
 import { ShopInfoService } from '../services/shop-info.service';
 
 @Component({
@@ -16,6 +19,8 @@ import { ShopInfoService } from '../services/shop-info.service';
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,
+    MatBadgeModule,
+    MatMenuModule,
     NetworkIndicatorComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,11 +32,22 @@ import { ShopInfoService } from '../services/shop-info.service';
       </a>
       <nav class="links">
         <a mat-button routerLink="/catalogue" routerLinkActive="active">Catalogue</a>
+        <a mat-button routerLink="/kits" routerLinkActive="active">Kits scolaires</a>
+        @if (auth.isAuthenticated()) { <a mat-button routerLink="/mes-commandes" routerLinkActive="active">Mes commandes</a> }
       </nav>
       <span class="spacer"></span>
       <lib-network-indicator [showSync]="false" />
+      <a mat-icon-button routerLink="/panier" aria-label="Mon panier">
+        <mat-icon [matBadge]="cart.count() || null" matBadgeColor="accent" matBadgeSize="small" aria-hidden="false">shopping_cart</mat-icon>
+      </a>
+      <button mat-icon-button class="mobile-menu" [matMenuTriggerFor]="menu" aria-label="Menu"><mat-icon>menu</mat-icon></button>
+      <mat-menu #menu="matMenu">
+        <a mat-menu-item routerLink="/catalogue">Catalogue</a>
+        <a mat-menu-item routerLink="/kits">Kits scolaires</a>
+        @if (auth.isAuthenticated()) { <a mat-menu-item routerLink="/mes-commandes">Mes commandes</a> }
+      </mat-menu>
       @if (auth.isAuthenticated()) {
-        <a mat-button routerLink="/mon-compte"><mat-icon>account_circle</mat-icon> Mon compte</a>
+        <a mat-button routerLink="/mon-compte"><mat-icon>account_circle</mat-icon> <span class="label">Mon compte</span></a>
       } @else {
         <a mat-flat-button routerLink="/connexion">Se connecter</a>
       }
@@ -85,9 +101,16 @@ import { ShopInfoService } from '../services/shop-info.service';
       font-size: 13px;
       opacity: 0.75;
     }
+    .mobile-menu {
+      display: none;
+    }
     @media (max-width: 599px) {
-      .links {
+      .links,
+      .label {
         display: none;
+      }
+      .mobile-menu {
+        display: inline-flex;
       }
     }
   `,
@@ -95,6 +118,7 @@ import { ShopInfoService } from '../services/shop-info.service';
 export class ShopShellComponent {
   protected readonly auth = inject(AuthService);
   protected readonly shop = inject(ShopInfoService);
+  protected readonly cart = inject(CartService);
 
   constructor() {
     this.shop.load();

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "apps.purchasing",
     "apps.sales",
     "apps.inventory",
+    "apps.orders",
     "apps.sync",
 ]
 
@@ -129,6 +130,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "auth": env("THROTTLE_AUTH", default="10/min"),
         "register": env("THROTTLE_REGISTER", default="5/hour"),
+        "webhook": env("THROTTLE_WEBHOOK", default="120/min"),
     },
     "DATETIME_FORMAT": "iso-8601",
 }
@@ -150,7 +152,12 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
-    "ENUM_NAME_OVERRIDES": {"RoleCodeEnum": "apps.accounts.catalog.ROLE_CHOICES"},
+    "ENUM_NAME_OVERRIDES": {
+        "RoleCodeEnum": "apps.accounts.catalog.ROLE_CHOICES",
+        "OnlineOrderStatusEnum": "apps.orders.models.OnlineOrder.Status",
+        "OrderLineStatusEnum": "apps.orders.models.OnlineOrderLine.Status",
+        "OnlinePaymentStatusEnum": "apps.orders.models.PaymentTransaction.Status",
+    },
 }
 
 # --- CORS / CSRF -----------------------------------------------------------
@@ -186,12 +193,18 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=not bool(REDIS_URL))
 CELERY_BEAT_SCHEDULE: dict = {
     "alertes-stock": {"task": "apps.stock.tasks.refresh_stock_alerts", "schedule": 3600.0},
+    "expiration-commandes": {"task": "apps.orders.tasks.expire_online_orders", "schedule": 900.0},
+    "rappel-commandes": {"task": "apps.orders.tasks.remind_online_orders", "schedule": 1800.0},
 }
 
 # --- Web Push (VAPID) ------------------------------------------------------
 VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
 VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
 VAPID_CLAIMS_EMAIL = env("VAPID_CLAIMS_EMAIL", default="mailto:admin@librairie.local")
+
+# --- Paiement en ligne (acompte Mobile Money) ------------------------------
+# Classe implémentant apps.orders.payments.PaymentProvider ; la simulation est fournie par défaut.
+PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="apps.orders.payments.SandboxProvider")
 
 # --- Email -----------------------------------------------------------------
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")

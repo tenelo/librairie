@@ -10,6 +10,8 @@ export interface PaymentDialogData {
   methods: SyncedRow[];
   hasCustomer: boolean;
   customerCredit: { balance: number; limit: number } | null;
+  /** Acompte payé en ligne, imputable sur le retrait d'une commande. */
+  deposit?: number;
 }
 
 /** Encaissement : paiements multiples (espèces avec monnaie, Mobile Money, carte, crédit, bon, avoir). */
@@ -21,7 +23,7 @@ export interface PaymentDialogData {
     <h2 mat-dialog-title>Encaisser {{ data.total | fcfa }}</h2>
     <mat-dialog-content>
       <div class="methods">
-        @for (m of data.methods; track m.id) {
+        @for (m of methods; track m.id) {
           <button mat-stroked-button type="button" (click)="add(m)">{{ m['label'] }}</button>
         }
       </div>
@@ -95,9 +97,17 @@ export class PaymentDialogComponent {
   private readonly ref = inject(MatDialogRef<PaymentDialogComponent, CartPayment[]>);
   protected readonly payments = signal<CartPayment[]>([]);
   private readonly byCode = new Map(this.data.methods.map((m) => [String(m['code']), m]));
-
-  protected readonly check = computed(() => checkPayments(this.data.total, this.payments(),
-    (code) => Boolean(this.byCode.get(code)?.['requires_reference']), this.data.hasCustomer));
+  /** L'acompte en ligne n'est proposé que pour le retrait d'une commande qui en a un. */
+  protected readonly methods = this.data.methods.filter((m) => m['kind'] !== 'DEPOSIT' || (this.data.deposit ?? 0) > 0);
+  protected readonly check = computed(() => {
+    const result = checkPayments(this.data.total, this.payments(),
+      (code) => Boolean(this.byCode.get(code)?.['requires_reference']), this.data.hasCustomer);
+    const deposit = this.payments().filter((p) => p.kind === 'DEPOSIT').reduce((sum, p) => sum + p.amount, 0);
+    if (result.valid && deposit > (this.data.deposit ?? 0)) {
+      return { ...result, valid: false, error: `Acompte imputé supérieur à l'acompte payé (${this.data.deposit ?? 0} FCFA).` };
+    }
+    return result;
+  });
 
   /** Montants d'espèces proposés : le reste exact, puis les billets ronds supérieurs. */
   protected readonly quickCash = computed(() => {
@@ -111,8 +121,13 @@ export class PaymentDialogComponent {
   });
 
   constructor() {
+    const deposit = this.data.methods.find((m) => m['kind'] === 'DEPOSIT');
+    if (deposit && (this.data.deposit ?? 0) > 0) {
+      this.payments.set([{ method: String(deposit['code']), kind: 'DEPOSIT',
+        amount: Math.min(this.data.deposit ?? 0, this.data.total) }]);
+    }
     const cash = this.data.methods.find((m) => m['code'] === 'CASH');
-    if (cash) {
+    if (cash && (this.check().remaining || !this.payments().length)) {
       this.add(cash);
     }
   }

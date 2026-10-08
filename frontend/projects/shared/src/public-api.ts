@@ -27,6 +27,7 @@ export * from './lib/catalog/barcode-svg.component';
 export * from './lib/catalog/catalog-api.service';
 export * from './lib/models/stock.models';
 export * from './lib/models/purchasing.models';
+export * from './lib/models/orders.models';
 export * from './lib/stock/stock-api.service';
 export * from './lib/offline/local-db';
 export * from './lib/offline/local-db.service';

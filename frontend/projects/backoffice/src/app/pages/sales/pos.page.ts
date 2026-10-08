@@ -14,15 +14,20 @@ import {
   CartPayment,
   FcfaPipe,
   LocalDbService,
+  NetworkStatusService,
   OfflineDataService,
   PricedArticle,
   PrinterService,
   SyncedRow,
+  apiErrorMessage,
   cartTotals,
   lineTotal,
+  parsePickupCode,
   unitPrice,
 } from '@librairie/shared';
 import { firstValueFrom } from 'rxjs';
+
+import { OrdersApiService } from '../orders/orders-api.service';
 
 import { CashRegisterService } from './cash-register.service';
 import { KitComponentView, KitCustomizeDialogComponent, KitCustomizeResult } from './kit-customize-dialog.component';
@@ -72,7 +77,11 @@ export class PosPage {
   private readonly snack = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly orders = inject(OrdersApiService);
+  private readonly network = inject(NetworkStatusService);
   private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchBox');
+  /** Commande en ligne en cours de retrait (lignes verrouillées, acompte imputable). */
+  protected readonly onlineOrder = signal<{ id: string; number: string; deposit: number } | null>(null);
 
   protected readonly lines = signal<CartLine[]>([]);
   protected readonly customer = signal<SyncedRow | null>(null);
@@ -112,6 +121,10 @@ export class PosPage {
     const held = this.route.snapshot.queryParamMap.get('attente');
     if (held) {
       await this.resume(held);
+    }
+    const order = this.route.snapshot.queryParamMap.get('commande');
+    if (order) {
+      await this.loadOrder(order, true);
     }
     setTimeout(() => this.searchInput()?.nativeElement.focus(), 100);
   }
@@ -330,7 +343,77 @@ export class PosPage {
     await this.refreshStock();
   }
 
+  /** Retrait d'une commande en ligne : QR code, code à 6 chiffres ou numéro (douchette ou saisie). */
+  protected async pickup(): Promise<void> {
+    const code = prompt('Scannez le QR code de retrait, ou saisissez le code à 6 chiffres ou le numéro de commande :');
+    if (code?.trim()) {
+      await this.loadOrder(code.trim(), false);
+    }
+  }
+
+  private async findOrder(value: string, byId: boolean): Promise<SyncedRow | null> {
+    if (this.network.online()) {
+      try {
+        const order = await firstValueFrom(byId ? this.orders.get(value) : this.orders.lookup(value));
+        return order as unknown as SyncedRow;
+      } catch (error) {
+        const status = (error as { status?: number }).status;
+        if (status === 404) {
+          return null;
+        }
+        if (status && status < 500) {
+          throw error;
+        }
+      }
+    }
+    // Hors ligne : commandes prêtes téléchargées sur le terminal.
+    const { number, code } = parsePickupCode(value);
+    const rows = await this.local.db.online_orders.filter((r) => !r.is_deleted && (byId ? r.id === value
+      : (!number || r['number'] === number) && (!code || r['pickup_code'] === code))).toArray();
+    return rows.length === 1 ? rows[0] : null;
+  }
+
+  private async loadOrder(value: string, byId: boolean): Promise<void> {
+    let order: SyncedRow | null;
+    try {
+      order = await this.findOrder(value, byId);
+    } catch (error) {
+      this.snack.open(apiErrorMessage(error), 'Fermer', { duration: 8000 });
+      return;
+    }
+    if (!order) {
+      this.snack.open('Aucune commande prête ne correspond à ce code.', 'Fermer', { duration: 6000 });
+      return;
+    }
+    if (order['status'] !== 'READY') {
+      this.snack.open(`La commande ${order['number']} n'est pas prête au retrait (${order['status_label'] ?? order['status']}).`,
+        'Fermer', { duration: 8000 });
+      return;
+    }
+    if (this.lines().length && !confirm('Remplacer le panier en cours par la commande à retirer ?')) {
+      return;
+    }
+    this.reset();
+    const orderLines = (order['lines'] as { article: string; description: string; quantity: number; unit_price: number }[])
+      .filter((l) => l.quantity > 0);
+    const lines: CartLine[] = [];
+    for (const line of orderLines) {
+      const row = await this.local.db.articles.get(line.article);
+      const article: PricedArticle = row ? toPriced(row) : { id: line.article, code: '', name: line.description,
+        type: 'SIMPLE', retail_price: line.unit_price, wholesale_price: null, wholesale_min_qty: null, avg_cost: 0 };
+      lines.push({ id: crypto.randomUUID(), article, quantity: line.quantity, customPrice: line.unit_price, discount: 0,
+        kitAdjustments: null, description: line.description });
+    }
+    this.lines.set(lines);
+    const customerId = String(order['customer']);
+    this.customer.set((await this.local.db.customers.get(customerId)) ?? { id: customerId, sync_version: 0,
+      is_deleted: false, name: order['customer_name'], phone: order['customer_phone'], loyalty_points: 0 });
+    this.onlineOrder.set({ id: order.id, number: String(order['number']), deposit: Number(order['deposit_paid'] ?? 0) });
+    await this.refreshStock();
+  }
+
   protected reset(): void {
+    this.onlineOrder.set(null);
     this.lines.set([]);
     this.customer.set(null);
     this.globalDiscount.set(0);
@@ -364,7 +447,7 @@ export class PosPage {
       .sort((a, b) => Number(a['sort_order']) - Number(b['sort_order']));
     const customer = this.customer();
     const payments = await firstValueFrom(this.dialog.open(PaymentDialogComponent, { data: {
-      total: this.totals().total, methods, hasCustomer: !!customer,
+      total: this.totals().total, methods, hasCustomer: !!customer, deposit: this.onlineOrder()?.deposit ?? 0,
       customerCredit: customer ? { balance: Number(customer['credit_balance'] ?? 0),
         limit: Number(customer['credit_limit'] ?? 0) } : null,
     }, width: '720px', maxWidth: '96vw' }).afterClosed()) as CartPayment[] | undefined;
@@ -375,7 +458,9 @@ export class PosPage {
     try {
       const sale = await this.pos.completeSale({
         lines: this.lines(), payments, customer, globalDiscount: this.globalDiscount(),
-        loyaltyPointsUsed: this.pointsUsed(), discountAuthorizedBy: this.authorizedBy(), notes: '',
+        loyaltyPointsUsed: this.pointsUsed(), discountAuthorizedBy: this.authorizedBy(),
+        notes: this.onlineOrder() ? `Retrait commande ${this.onlineOrder()!.number}` : '',
+        onlineOrder: this.onlineOrder()?.id ?? null,
       }, session, new Map(methods.map((m) => [String(m['code']), String(m['label'])])));
       this.reset();
       const change = sale.display.change;

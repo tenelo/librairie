@@ -183,3 +183,13 @@ describe('moteur de synchronisation', () => {
     expect(await local.db.depots.count()).toBe(1);
   });
 });
+
+import { parsePickupCode } from '../models/orders.models';
+
+describe('Code de retrait', () => {
+  it('lit le QR code, le code à 6 chiffres ou le numéro', () => {
+    expect(parsePickupCode('CMD:CMD-2026-00012:048213')).toEqual({ number: 'CMD-2026-00012', code: '048213' });
+    expect(parsePickupCode(' 048213 ')).toEqual({ number: null, code: '048213' });
+    expect(parsePickupCode('cmd-2026-00012')).toEqual({ number: 'CMD-2026-00012', code: null });
+  });
+});

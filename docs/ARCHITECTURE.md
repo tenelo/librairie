@@ -202,13 +202,18 @@ Les prix calculés sont arrondis selon `LibrarySettings.price_rounding` (5 FCFA 
 
 `customers.Customer` (phase 5) : `name`, `phone`, `email`, `address`, `credit_limit`, `is_active`, FK `school`, O2O `user`.
 
-### orders (phase 7)
+### orders (phase 7, livrée)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
-| `OnlineOrder` | `number`, `status` (RECEIVED, CONFIRMED, PREPARING, READY, PICKED_UP, CANCELLED, EXPIRED), `pickup_slot`, `comment`, `pickup_code` (6 chiffres), `expires_at`, `total`, `deposit_paid` | FK `customer`, `pickup_depot`, `preparer`, `sale` (au retrait) |
-| `OnlineOrderLine` | `quantity`, `unit_price`, `prepared_qty`, `status` (OK, PARTIAL, SUBSTITUTED, UNAVAILABLE) | FK `order`, `article`, `substitute` |
-| `OrderStatusHistory` | `from_status`, `to_status`, `note` | FK `order`, `user` |
-| `PaymentTransaction` | `provider`, `amount`, `status`, `external_ref` | FK `order` |
+| `OnlineOrder` | `number` (CMD-AAAA-00001), `status` (RECEIVED, CONFIRMED, PREPARING, READY, PICKED_UP, CANCELLED, EXPIRED), `pickup_slot`, `comment`, `pickup_code` (6 chiffres), `accept_partial`, `awaiting_customer`, `payment_mode` (ON_PICKUP, DEPOSIT), `total`, `deposit_due`, `deposit_paid`, `parcels`, `confirmed_at`, `ready_at`, `expires_at`, `picked_up_at`, `cancelled_at` | FK `customer`, `pickup_depot`, `preparer` ; O2O `sale` (au retrait) |
+| `OnlineOrderLine` | `ordered_qty`, `quantity` (retenue), `unit_price`, `line_total`, `prepared_qty`, `status` (OK, PARTIAL, SUBSTITUTED, UNAVAILABLE), `proposal` (JSON, rupture proposée au client) | FK `order`, `article`, `original_article` (substitution) |
+| `OrderStatusHistory` | `from_status`, `to_status`, `note`, `at` | FK `order`, `user` |
+| `PaymentTransaction` | `provider`, `operator`, `phone`, `amount`, `status` (PENDING, SUCCEEDED, FAILED), `external_ref` | FK `order` |
+
+La réservation d'une commande est la somme de ses mouvements `RESERVATION` / `RESERVATION_RELEASE`
+(`source_type = OnlineOrder`) ; `sync_reservation` l'aligne sur les lignes et le statut. API : `/api/orders/`
+(personnel), `/api/shop/` (catalogue public, commandes du client, paiements). Synchronisation :
+`online_order.prepare` (préparation faite sur un terminal) et source `online_orders` (commandes confirmées, en préparation, prêtes).
 
 ### notifications (phase 8)
 | Modèle | Champs principaux | Relations |

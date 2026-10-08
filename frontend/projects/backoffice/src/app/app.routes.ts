@@ -46,6 +46,11 @@ const IMPLEMENTED: Record<string, LazyComponent> = {
   'administration/moyens-de-paiement': () =>
     import('./pages/admin/payment-methods.page').then((m) => m.PaymentMethodsPage),
   'administration/depots': () => import('./pages/admin/depots.page').then((m) => m.DepotsPage),
+  'commandes/a-confirmer': () => import('./pages/orders/orders.page').then((m) => m.OnlineOrdersPage),
+  'commandes/a-preparer': () => import('./pages/orders/orders.page').then((m) => m.OnlineOrdersPage),
+  'commandes/pretes': () => import('./pages/orders/orders.page').then((m) => m.OnlineOrdersPage),
+  'commandes/retirees': () => import('./pages/orders/orders.page').then((m) => m.OnlineOrdersPage),
+  'commandes/annulees': () => import('./pages/orders/orders.page').then((m) => m.OnlineOrdersPage),
   'inventaires/nouveau': () => import('./pages/inventory/new-inventory.page').then((m) => m.NewInventoryPage),
   'inventaires/en-cours': () => import('./pages/inventory/inventories.page').then((m) => m.InventoriesPage),
   'inventaires/mes-comptages': () => import('./pages/inventory/counting.page').then((m) => m.CountingPage),
@@ -93,6 +98,12 @@ const DETAIL_ROUTES: Record<string, Routes> = {
       () => import('./pages/stock/transfer-form.page').then((m) => m.TransferFormPage)),
     detail('transferts/:id', 'Transfert', 'stock.view',
       () => import('./pages/stock/transfer-form.page').then((m) => m.TransferFormPage)),
+  ],
+  commandes: [
+    detail('detail/:id', 'Commande en ligne', 'orders.view',
+      () => import('./pages/orders/order-detail.page').then((m) => m.OrderDetailPage)),
+    detail('preparation/:id', 'Préparation de commande', 'orders.prepare',
+      () => import('./pages/orders/preparation.page').then((m) => m.PreparationPage)),
   ],
   inventaires: [
     detail('sessions/:id', 'Inventaire', 'inventory.view',

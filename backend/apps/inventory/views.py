@@ -132,6 +132,8 @@ class InventorySessionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, 
     search_fields = ["number", "name"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return InventorySession.objects.none()
         queryset = InventorySession.objects.select_related("depot", "created_by", "validated_by").prefetch_related(
             "categories", "locations", "articles", "assignments__user", "assignments__categories")
         user = self.request.user

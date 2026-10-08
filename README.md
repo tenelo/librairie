@@ -21,7 +21,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 4 | Couche hors connexion : base locale Dexie, outbox, `sync/push` et `sync/pull` idempotents, conflits, PIN hors ligne, écrans de synchronisation | **Livrée** |
 | 5 | Ventes et caisse : écran de caisse hors ligne, paiements multiples, reçus 58/80 mm et A4/A5, retours, ouverture/clôture, rapport Z, clients, crédit, avoirs, bons, fidélité | **Livrée** |
 | 6 | Inventaires : complet, partiel, tournant, gel du stock, comptage hors ligne multi-inventoristes, double comptage, rapport d'écarts Excel/PDF, validation avec ajustements | **Livrée** |
-| 7 | Boutique et commandes en ligne | À venir |
+| 7 | Boutique et commandes en ligne : catalogue, kits par établissement, panier, acompte Mobile Money (simulation), réservation, préparation par scan hors ligne, retrait par QR code en caisse, expiration Celery | **Livrée** |
 | 8 | Notifications | À venir |
 | 9 | Statistiques et exports | À venir |
 | 10 | Audit complet, durcissement | À venir |
@@ -32,6 +32,41 @@ message explicite et la version imprimable HTML reste disponible. L'image Docker
 
 Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
 de livraison.
+
+### Ce que contient la phase 7 (boutique et commandes en ligne)
+
+- **Boutique** (`frontend/projects/boutique`, port 4300 en développement) : catalogue avec recherche et
+  catégories, **kits scolaires par établissement et niveau** (contenu détaillé), disponibilité affichée
+  (en stock / stock faible / indisponible) sur les points de retrait, panier conservé dans le navigateur,
+  choix du point de retrait, créneau souhaité, commentaire, accord pour une commande partielle,
+  inscription / connexion par téléphone.
+- **Paiement** au retrait par défaut ; acompte Mobile Money optionnel (paramètre « Acompte en ligne »,
+  % du total) via l'interface `PaymentProvider` (`backend/apps/orders/payments.py`). L'implémentation
+  `SandboxProvider` simule l'agrégateur (boutons « Simuler un paiement ») ; le webhook
+  `/api/shop/payments/webhook/<prestataire>/` est prêt pour un prestataire réel. L'acompte est imputé
+  automatiquement à l'encaissement du retrait.
+- **Suivi de commande** : étapes, historique, actualisation automatique, **code de retrait** (QR code
+  `CMD:numéro:code` + code à 6 chiffres), annulation par le client tant que la préparation n'a pas
+  commencé, réponse aux modifications proposées.
+- **Cycle** `REÇUE → CONFIRMÉE → EN PRÉPARATION → PRÊTE → RETIRÉE`, branches `ANNULÉE` et `EXPIRÉE`.
+  La confirmation **réserve** le stock du point de retrait (kits virtuels décomposés) ; l'annulation,
+  l'expiration ou le retrait le libèrent. Tâches Celery : expiration des commandes non retirées dans
+  le délai (paramètre « Délai de retrait », 72 h par défaut) et rappel avant expiration.
+- **Ruptures** : le préparateur déclare la quantité disponible et peut proposer un article de
+  remplacement ; si le client a accepté une commande partielle, les réductions s'appliquent d'office,
+  sinon le client accepte ou refuse depuis la boutique.
+- **Backoffice** (menu Commandes en ligne) : files À confirmer, À préparer, Prêtes, Retirées,
+  Annulées / Expirées ; fiche commande, **liste de préparation** imprimable triée par emplacement,
+  **étiquette de colis** (QR code, client, nombre de colis) ; **préparation par scan** avec contrôle
+  des quantités et alerte sonore, utilisable **hors ligne** (commande téléchargée, progression
+  conservée sur le terminal, envoi par la file de synchronisation).
+- **Retrait à la caisse** : bouton « Retrait commande » (scan du QR code ou saisie du code), aussi hors
+  ligne ; la commande devient une vente du canal « en ligne » avec reçu, le serveur vérifie que les
+  articles correspondent à la commande.
+
+**Tester** : `npm run start:boutique` (ou `npx ng serve boutique`), créer un compte, commander, puis dans
+le backoffice : Commandes en ligne › À confirmer › Confirmer, Préparer (scanner les articles),
+« Commande prête », et à la caisse « Retrait commande » avec le code affiché dans la boutique.
 
 ### Ce que contient la phase 6 (inventaires)
 

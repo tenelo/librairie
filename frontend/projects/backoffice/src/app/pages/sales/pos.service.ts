@@ -37,6 +37,8 @@ export interface SaleDraft {
   loyaltyPointsUsed: number;
   discountAuthorizedBy: string | null;
   notes: string;
+  /** Retrait d'une commande en ligne : la vente clôture la commande (contrôlée par le serveur). */
+  onlineOrder?: string | null;
 }
 
 export interface LocalSale extends LocalRecord {
@@ -159,6 +161,7 @@ export class PosService {
       change_due: change,
       discount_authorized_by: draft.discountAuthorizedBy,
       notes: draft.notes,
+      online_order: draft.onlineOrder ?? undefined,
     };
     const deltas = (await Promise.all(draft.lines.map((line) => this.lineDeltas(line, session.depot)))).flat();
     const perThousand = await this.setting('loyalty_points_per_1000', 1);

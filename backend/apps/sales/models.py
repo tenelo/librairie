@@ -17,6 +17,7 @@ class PaymentMethod(SyncModel):
         CREDIT = "CREDIT", "Crédit client"
         VOUCHER = "VOUCHER", "Bon d'achat"
         CREDIT_NOTE = "CREDIT_NOTE", "Avoir"
+        DEPOSIT = "DEPOSIT", "Acompte en ligne"
 
     code = models.CharField("code", max_length=20, unique=True)
     label = models.CharField("libellé", max_length=50)

@@ -245,3 +245,18 @@ input.small {
   opacity: 0.7;
   text-align: center;
 }
+
+.online-order {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.online-order span {
+  flex: 1;
+}

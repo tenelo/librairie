@@ -7,6 +7,7 @@ que le terminal était hors ligne) est accepté s'il correspond au prix en vigue
 vente, sinon accepté mais signalé dans le journal d'audit.
 """
 import re
+from collections import Counter
 from decimal import Decimal
 
 from django.db.models import Sum
@@ -269,6 +270,14 @@ def create_sale(context, payload) -> Sale:
     customer = Customer.objects.filter(pk=payload["customer"]).first() if payload.get("customer") else None
     if payload.get("customer") and customer is None:
         raise ValidationError({"customer": "Client inconnu."})
+    # Retrait d'une commande en ligne : client et prix de la commande, acompte imputable.
+    online_order, order_prices = None, {}
+    if payload.get("online_order"):
+        from apps.orders.services import order_for_sale
+
+        online_order = order_for_sale(payload, depot)
+        customer = online_order.customer
+        order_prices = {str(line.article_id): line.unit_price for line in online_order.lines.all() if line.quantity}
 
     # 1. Lignes : contrôles arithmétiques et prix catalogue en vigueur.
     lines_data, price_flags, gross, subtotal, line_discounts = [], [], 0, 0, 0
@@ -292,6 +301,8 @@ def create_sale(context, payload) -> Sale:
         else:
             expected_price, price_kind = catalog_unit_price(article, quantity, sold_at)
             trace = []
+        if str(article.pk) in order_prices:
+            expected_price, price_kind = order_prices[str(article.pk)], SaleLine.PriceKind.RETAIL
         if expected_price != unit_price:
             price_flags.append(f"{article.code} : {unit_price} au lieu de {expected_price}")
         gross += quantity * unit_price
@@ -301,6 +312,14 @@ def create_sale(context, payload) -> Sale:
                            line.get("description") or article.name, line.get("id")))
     if not lines_data:
         raise ValidationError({"lines": "La vente ne contient aucune ligne."})
+    if online_order is not None:
+        ordered, sold = Counter(), Counter()
+        for order_line in online_order.lines.all():
+            ordered[str(order_line.article_id)] += order_line.quantity
+        for row in lines_data:
+            sold[str(row[0].pk)] += row[1]
+        if +ordered != +sold:
+            raise ValidationError({"lines": f"Les articles ne correspondent pas à la commande {online_order.number}."})
     if _int(payload.get("subtotal", subtotal), "subtotal") != subtotal:
         raise ValidationError({"subtotal": "Le sous-total ne correspond pas aux lignes."})
 
@@ -328,7 +347,7 @@ def create_sale(context, payload) -> Sale:
                                                f"sans autorisation valide d'un responsable."})
 
     # 4. Paiements.
-    payments_data, paid, cash_paid = [], 0, 0
+    payments_data, paid, cash_paid, deposit_used = [], 0, 0, 0
     for item in payload.get("payments") or []:
         method = PaymentMethod.objects.filter(code=item.get("method"), is_active=True).first()
         amount = _int(item.get("amount"), "amount")
@@ -348,10 +367,16 @@ def create_sale(context, payload) -> Sale:
                 raise ValidationError({"payments": "Avoir invalide ou solde insuffisant."})
         if method.kind == PaymentMethod.Kind.CREDIT and customer is None:
             raise ValidationError({"payments": "Une vente à crédit exige un client."})
+        if method.kind == PaymentMethod.Kind.DEPOSIT:
+            if online_order is None:
+                raise ValidationError({"payments": "L'acompte en ligne ne s'impute que sur le retrait d'une commande."})
+            deposit_used += amount
         if method.kind == PaymentMethod.Kind.CASH:
             cash_paid += amount
         paid += amount
         payments_data.append((method, amount, reference, voucher, credit_note))
+    if online_order is not None and deposit_used > online_order.deposit_paid:
+        raise ValidationError({"payments": f"Acompte imputé supérieur à l'acompte payé ({online_order.deposit_paid} FCFA)."})
     change = paid - total
     if change < 0:
         raise ValidationError({"payments": f"Paiement insuffisant : {paid} FCFA pour {total} FCFA."})
@@ -366,7 +391,7 @@ def create_sale(context, payload) -> Sale:
         depot=depot, cash_session=session, sold_at=sold_at, subtotal=subtotal, discount_total=discount_total,
         total=total, paid_total=paid, change_due=change, discount_authorized_by=authorizer,
         notes=(payload.get("notes") or "")[:255], client_timestamp=context.client_timestamp,
-        channel=payload.get("channel", Sale.Channel.COUNTER),
+        channel=Sale.Channel.ONLINE if online_order else payload.get("channel", Sale.Channel.COUNTER),
     )
     touched = []
     for order, (article, quantity, unit_price, discount, line_total, price_kind, adjustments, trace, description,
@@ -409,6 +434,10 @@ def create_sale(context, payload) -> Sale:
             sale.save(update_fields=["loyalty_points"])
         touch_customer(customer)
 
+    if online_order is not None:
+        from apps.orders.services import complete_pickup
+
+        complete_pickup(online_order, sale, context.user)
     refresh_alerts({a.pk: a for a in touched}.values())
     log_event(AuditLog.Action.CREATE, user=context.user, device=context.device, entity="Sale", entity_id=sale.pk,
               description=f"Vente {number} : {total} FCFA", client_timestamp=context.client_timestamp,

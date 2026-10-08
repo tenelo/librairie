@@ -14,7 +14,7 @@ import { ShopInfoService } from '../../services/shop-info.service';
     <section class="hero">
       <h1>Bienvenue chez {{ shop.info()?.name ?? 'votre librairie' }}</h1>
       <p>Commandez vos fournitures et kits scolaires en ligne, retirez-les en librairie.</p>
-      <a mat-flat-button routerLink="/catalogue">Voir le catalogue</a>
+      <a mat-flat-button routerLink="/catalogue">Voir le catalogue</a> <a mat-stroked-button routerLink="/kits">Choisir un kit scolaire</a>
     </section>
     <section class="steps">
       <mat-card appearance="outlined">

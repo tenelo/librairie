@@ -77,6 +77,10 @@ import { AdminApiService } from '../../services/admin-api.service';
             <input matInput formControlName="order_expiry_hours" type="number" min="1" />
           </mat-form-field>
           <mat-form-field>
+            <mat-label>Acompte en ligne (% du total, 0 = aucun)</mat-label>
+            <input matInput formControlName="online_deposit_percent" type="number" min="0" max="100" />
+          </mat-form-field>
+          <mat-form-field>
             <mat-label>Intervalle de synchronisation (min)</mat-label>
             <input matInput formControlName="sync_interval_minutes" type="number" min="1" max="120" />
           </mat-form-field>
@@ -144,6 +148,7 @@ export class LibrarySettingsPage {
     default_vat_rate: ['18.00'],
     offline_max_hours: [72, [Validators.required, Validators.min(1)]],
     order_expiry_hours: [72, [Validators.required, Validators.min(1)]],
+    online_deposit_percent: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
     sync_interval_minutes: [5, [Validators.required, Validators.min(1), Validators.max(120)]],
     loyalty_points_per_1000: [1, [Validators.required, Validators.min(0)]],
     price_rounding: [5, Validators.required],
@@ -185,6 +190,7 @@ export class LibrarySettingsPage {
       default_vat_rate: settings.default_vat_rate,
       offline_max_hours: settings.offline_max_hours,
       order_expiry_hours: settings.order_expiry_hours,
+      online_deposit_percent: settings.online_deposit_percent,
       sync_interval_minutes: settings.sync_interval_minutes,
       loyalty_points_per_1000: settings.loyalty_points_per_1000,
       price_rounding: settings.price_rounding,

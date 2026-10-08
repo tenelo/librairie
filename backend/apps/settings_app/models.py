@@ -43,6 +43,10 @@ class LibrarySettings(SyncModel):
     )
     loyalty_points_per_1000 = models.PositiveIntegerField("points de fidélité par tranche de 1 000 FCFA", default=1)
     loyalty_point_value = models.PositiveIntegerField("valeur d'un point de fidélité (FCFA)", default=10)
+    online_deposit_percent = models.PositiveIntegerField(
+        "acompte en ligne (% du total)", default=0, validators=[MaxValueValidator(100)],
+        help_text="0 : paiement au retrait uniquement ; sinon, acompte Mobile Money proposé à la commande.",
+    )
     price_rounding = models.PositiveIntegerField(
         "arrondi des prix calculés (FCFA)",
         default=5,
