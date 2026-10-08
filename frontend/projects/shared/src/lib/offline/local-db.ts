@@ -93,6 +93,7 @@ export const MIRROR_TABLES = [
   'purchase_orders',
   'credit_notes',
   'vouchers',
+  'inventory_sessions',
 ] as const;
 export type MirrorTable = (typeof MIRROR_TABLES)[number];
 
@@ -129,6 +130,9 @@ export class LibrairieDb extends Dexie {
   local_sales!: Table<LocalRecord, string>;
   local_returns!: Table<LocalRecord, string>;
   local_cash_movements!: Table<LocalRecord, string>;
+  inventory_sessions!: Table<SyncedRow, string>;
+  /** Comptages d'inventaire saisis sur ce terminal. */
+  local_counts!: Table<LocalRecord, string>;
   outbox!: Table<OutboxEntry, string>;
   users!: Table<OfflineUser, string>;
   meta!: Table<MetaEntry, string>;
@@ -168,6 +172,10 @@ export class LibrairieDb extends Dexie {
       local_sales: 'id, receipt_number, cash_session, createdAt',
       local_returns: 'id, sale, createdAt',
       local_cash_movements: 'id, session, createdAt',
+    });
+    this.version(4).stores({
+      inventory_sessions: 'id, status',
+      local_counts: 'id, session, article, createdAt',
     });
   }
 

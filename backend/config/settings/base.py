@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.stock",
     "apps.purchasing",
     "apps.sales",
+    "apps.inventory",
     "apps.sync",
 ]
 

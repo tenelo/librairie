@@ -168,14 +168,14 @@ Les prix calculés sont arrondis selon `LibrarySettings.price_rounding` (5 FCFA 
 | `PurchaseOrderLine` | `quantity`, `unit_cost`, `received_quantity` | FK `order`, `article` |
 | `GoodsReceipt` + `GoodsReceiptLine` | `number` (REC-…), `received_at`, `delivery_note`, `quantity`, `unit_cost` | FK `supplier`, `depot`, `purchase_order` (nullable), `order_line` (nullable) |
 
-### inventory (phase 6)
+### inventory (phase 6, livrée)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
-| `InventorySession` | `number`, `kind` (FULL, PARTIAL, CYCLE), `status` (DRAFT, COUNTING, REVIEW, VALIDATED, CLOSED), `frozen_at`, `double_count_threshold` | FK `depot` ; M2M `categories`, `articles`, `locations` |
+| `InventorySession` | `number`, `kind` (FULL, PARTIAL, CYCLE), `status` (DRAFT, COUNTING, REVIEW, VALIDATED, CLOSED, CANCELLED), `counting_mode` (SUM, DOUBLE), `frozen_at`, `double_count_threshold` | FK `depot` ; M2M `categories`, `articles`, `locations` |
 | `InventoryAssignment` | zones/catégories attribuées | FK `session`, `user` |
-| `InventorySnapshot` | `theoretical_qty`, `unit_cost` | FK `session`, `article` (stock gelé) |
+| `InventorySnapshot` | `theoretical`, `unit_cost` | FK `session`, `article` (stock gelé) |
 | `InventoryCount` | `quantity`, `count_round` (1 ou 2), `counted_at` | FK `session`, `article`, `location`, `user`, `device` |
-| `InventoryVariance` | `theoretical`, `sales_during`, `counted`, `variance`, `value` | FK `session`, `article` |
+| `InventoryLine` | `theoretical`, `movements_during`, `expected`, `counted`, `variance`, `unit_cost`, `variance_value` (figé à la validation) | FK `session`, `article` |
 
 ### customers (`School` livré en phase 2, le reste en phases 5 et 7)
 | Modèle | Champs principaux | Relations |

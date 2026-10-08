@@ -99,10 +99,10 @@ export const MENU: MenuSection[] = [
     icon: 'fact_check',
     path: 'inventaires',
     children: [
-      { label: 'Nouvel inventaire', path: 'nouveau', permission: 'inventory.create', phase: 6 },
-      { label: 'Inventaires en cours', path: 'en-cours', permission: 'inventory.view', phase: 6 },
-      { label: 'Mes comptages', path: 'mes-comptages', permission: 'inventory.count', phase: 6 },
-      { label: 'Historique et écarts', path: 'historique', permission: 'inventory.view', phase: 6 },
+      { label: 'Nouvel inventaire', path: 'nouveau', permission: 'inventory.create' },
+      { label: 'Inventaires en cours', path: 'en-cours', permission: 'inventory.view' },
+      { label: 'Mes comptages', path: 'mes-comptages', permission: 'inventory.count' },
+      { label: 'Historique et écarts', path: 'historique', permission: 'inventory.view' },
     ],
   },
   {

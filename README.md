@@ -20,7 +20,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 3 | Stock et achats : dépôts, mouvements, CMP, transferts, assemblage de kits, alertes, fournisseurs, bons de commande, réceptions, suggestions | **Livrée** |
 | 4 | Couche hors connexion : base locale Dexie, outbox, `sync/push` et `sync/pull` idempotents, conflits, PIN hors ligne, écrans de synchronisation | **Livrée** |
 | 5 | Ventes et caisse : écran de caisse hors ligne, paiements multiples, reçus 58/80 mm et A4/A5, retours, ouverture/clôture, rapport Z, clients, crédit, avoirs, bons, fidélité | **Livrée** |
-| 6 | Inventaires | À venir |
+| 6 | Inventaires : complet, partiel, tournant, gel du stock, comptage hors ligne multi-inventoristes, double comptage, rapport d'écarts Excel/PDF, validation avec ajustements | **Livrée** |
 | 7 | Boutique et commandes en ligne | À venir |
 | 8 | Notifications | À venir |
 | 9 | Statistiques et exports | À venir |
@@ -32,6 +32,29 @@ message explicite et la version imprimable HTML reste disponible. L'image Docker
 
 Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
 de livraison.
+
+### Ce que contient la phase 6 (inventaires)
+
+- **Création** (Inventaires › Nouvel inventaire) : inventaire complet, partiel (catégories, sous-catégories
+  comprises) ou tournant (articles choisis), dépôt, mode de comptage (comptages additionnés ou double
+  comptage au-delà d'un seuil d'écart), inventoristes affectés avec consigne de zone.
+- **Gel du stock** au démarrage : le stock théorique de chaque article du périmètre est photographié.
+  Les ventes et réceptions **continuent** pendant l'inventaire : le rapport ajoute les mouvements
+  survenus entre le gel et le comptage (attendu = théorique + mouvements pendant).
+- **Comptage** (Inventaires › Mes comptages) par scan douchette ou recherche, **hors connexion** :
+  chaque comptage est conservé dans la base locale du terminal et envoyé par la file de synchronisation
+  (`inventory_count.create`, idempotent). Plusieurs inventoristes comptent en parallèle, leurs
+  comptages s'additionnent. Un article trouvé hors périmètre est ajouté à l'inventaire.
+- **Double comptage** : si l'écart du premier comptage dépasse le seuil, l'article passe « à recompter » ;
+  la validation est bloquée tant que le recomptage n'est pas fait (le 2ᵉ comptage fait foi).
+- **Suivi et rapport d'écarts** : avancement, filtres (avec écart, non comptés, à recompter), écart en
+  unités et valorisé au CMP, export **Excel** et **PDF**.
+- **Validation** (permission `inventory.validate`, responsable / administrateur) : un mouvement
+  `ADJUSTMENT` est créé pour chaque écart, les non-comptés peuvent être mis à zéro, l'action est tracée
+  dans l'audit ; l'inventaire est ensuite clôturé et figé (Historique et écarts).
+
+**Tester** : Inventaires › Nouvel inventaire › « Créer et geler le stock », puis « Compter » ; saisir des
+quantités (y compris hors ligne), « Terminer les comptages (revue) », puis « Valider et ajuster le stock ».
 
 ### Ce que contient la phase 5 (ventes et caisse)
 

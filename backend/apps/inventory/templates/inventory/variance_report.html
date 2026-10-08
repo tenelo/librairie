@@ -1,0 +1,44 @@
+{% load humanize_fcfa %}<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport d'écarts {{ session.number }}</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm; @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size: 8pt; } }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9pt; }
+  h1 { font-size: 15pt; color: #1f5fad; margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th { background: #1f5fad; color: #fff; padding: 4px; text-align: left; font-weight: normal; }
+  td { padding: 3px 4px; border-bottom: 1px solid #ddd; }
+  .num { text-align: right; white-space: nowrap; }
+  .neg { color: #b00020; }
+  .summary { margin-top: 8px; }
+</style>
+</head>
+<body>
+  <h1>{{ library.name }} — Rapport d'écarts d'inventaire</h1>
+  <div>{{ session.number }} · {{ session.name }} · {{ session.get_kind_display }} · dépôt {{ session.depot.name }}</div>
+  <div>Stock gelé le {{ session.frozen_at|date:"d/m/Y H:i" }} · statut : {{ session.get_status_display }}
+    {% if session.validated_by %} · validé par {{ session.validated_by.get_full_name }} le {{ session.validated_at|date:"d/m/Y H:i" }}{% endif %}</div>
+  <div class="summary">{{ summary.articles }} articles · {{ summary.counted }} comptés · écart total
+    {{ summary.variance_units }} unités · valeur nette {{ summary.variance_value|fcfa }}</div>
+  <table>
+    <thead><tr><th>Code</th><th>Article</th><th class="num">Théorique</th><th class="num">Mvts pendant</th>
+      <th class="num">Attendu</th><th class="num">Compté</th><th class="num">Écart</th><th class="num">CMP</th>
+      <th class="num">Valeur</th></tr></thead>
+    <tbody>
+    {% for line in lines %}
+      <tr>
+        <td>{{ line.code }}</td><td>{{ line.name }}</td>
+        <td class="num">{{ line.theoretical }}</td><td class="num">{{ line.movements_during }}</td>
+        <td class="num">{{ line.expected }}</td><td class="num">{% if line.counted is None %}—{% else %}{{ line.counted }}{% endif %}</td>
+        <td class="num {% if line.variance and line.variance < 0 %}neg{% endif %}">{{ line.variance|default_if_none:"—" }}</td>
+        <td class="num">{{ line.unit_cost|fcfa }}</td>
+        <td class="num {% if line.variance_value < 0 %}neg{% endif %}">{{ line.variance_value|fcfa }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p>Édité le {{ generated_at|date:"d/m/Y H:i" }}</p>
+</body>
+</html>

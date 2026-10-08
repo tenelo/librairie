@@ -46,6 +46,10 @@ const IMPLEMENTED: Record<string, LazyComponent> = {
   'administration/moyens-de-paiement': () =>
     import('./pages/admin/payment-methods.page').then((m) => m.PaymentMethodsPage),
   'administration/depots': () => import('./pages/admin/depots.page').then((m) => m.DepotsPage),
+  'inventaires/nouveau': () => import('./pages/inventory/new-inventory.page').then((m) => m.NewInventoryPage),
+  'inventaires/en-cours': () => import('./pages/inventory/inventories.page').then((m) => m.InventoriesPage),
+  'inventaires/mes-comptages': () => import('./pages/inventory/counting.page').then((m) => m.CountingPage),
+  'inventaires/historique': () => import('./pages/inventory/inventories.page').then((m) => m.InventoriesPage),
 };
 
 function detail(path: string, title: string, permission: string, load: LazyComponent): Route {
@@ -89,6 +93,10 @@ const DETAIL_ROUTES: Record<string, Routes> = {
       () => import('./pages/stock/transfer-form.page').then((m) => m.TransferFormPage)),
     detail('transferts/:id', 'Transfert', 'stock.view',
       () => import('./pages/stock/transfer-form.page').then((m) => m.TransferFormPage)),
+  ],
+  inventaires: [
+    detail('sessions/:id', 'Inventaire', 'inventory.view',
+      () => import('./pages/inventory/inventory-detail.page').then((m) => m.InventoryDetailPage)),
   ],
   achats: [
     detail('bons-de-commande/nouveau', 'Nouveau bon de commande', 'purchasing.manage',
