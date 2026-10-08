@@ -147,6 +147,8 @@ class Device(models.Model):
     )
     name = models.CharField("nom", max_length=100)
     kind = models.CharField("type", max_length=10, choices=KIND_CHOICES, default="CAISSE")
+    depot = models.ForeignKey("stock.Depot", verbose_name="dépôt", on_delete=models.PROTECT, null=True, blank=True,
+                              related_name="devices", help_text="Dépôt des ventes et mouvements de ce terminal.")
     is_active = models.BooleanField("actif", default=True)
     last_seen_at = models.DateTimeField("vu pour la dernière fois", null=True, blank=True)
     last_sync_at = models.DateTimeField("dernière synchronisation", null=True, blank=True)

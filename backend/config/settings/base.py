@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     "apps.settings_app",
     "apps.customers",
     "apps.catalog",
+    "apps.stock",
+    "apps.purchasing",
 ]
 
 MIDDLEWARE = [
@@ -179,7 +181,9 @@ CELERY_BROKER_URL = env("CELERY_BROKER_URL", default=REDIS_URL or "memory://")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default=REDIS_URL or "cache+memory://")
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=not bool(REDIS_URL))
-CELERY_BEAT_SCHEDULE: dict = {}
+CELERY_BEAT_SCHEDULE: dict = {
+    "alertes-stock": {"task": "apps.stock.tasks.refresh_stock_alerts", "schedule": 3600.0},
+}
 
 # --- Web Push (VAPID) ------------------------------------------------------
 VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")

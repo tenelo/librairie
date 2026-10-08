@@ -21,7 +21,22 @@ const IMPLEMENTED: Record<string, LazyComponent> = {
   'catalogue/etiquettes': () => import('./pages/catalog/labels.page').then((m) => m.LabelsPage),
   'catalogue/import-export': () => import('./pages/catalog/import-export.page').then((m) => m.ImportExportPage),
   'clients/etablissements': () => import('./pages/catalog/levels-schools.page').then((m) => m.LevelsSchoolsPage),
+  'stock/etat': () => import('./pages/stock/stock-state.page').then((m) => m.StockStatePage),
+  'stock/mouvements': () => import('./pages/stock/movements.page').then((m) => m.MovementsPage),
+  'stock/transferts': () => import('./pages/stock/transfers.page').then((m) => m.TransfersPage),
+  'stock/assemblage': () => import('./pages/stock/assembly.page').then((m) => m.AssemblyPage),
+  'stock/pertes': () => import('./pages/stock/losses.page').then((m) => m.LossesPage),
+  'stock/alertes': () => import('./pages/stock/alerts.page').then((m) => m.AlertsPage),
+  'achats/fournisseurs': () => import('./pages/purchasing/suppliers.page').then((m) => m.SuppliersPage),
+  'achats/bons-de-commande': () => import('./pages/purchasing/orders.page').then((m) => m.OrdersPage),
+  'achats/receptions': () => import('./pages/purchasing/receipts.page').then((m) => m.ReceiptsPage),
+  'achats/suggestions': () => import('./pages/purchasing/suggestions.page').then((m) => m.SuggestionsPage),
+  'administration/depots': () => import('./pages/admin/depots.page').then((m) => m.DepotsPage),
 };
+
+function detail(path: string, title: string, permission: string, load: LazyComponent): Route {
+  return { path, title: `${title} · Librairie`, canActivate: [permissionGuard], data: { permission }, loadComponent: load };
+}
 
 /** Écrans de détail rattachés à une section (création / modification), avec leur permission. */
 const DETAIL_ROUTES: Record<string, Routes> = {
@@ -54,6 +69,22 @@ const DETAIL_ROUTES: Record<string, Routes> = {
       data: { permission: 'catalog.view' },
       loadComponent: () => import('./pages/catalog/kit-form.page').then((m) => m.KitFormPage),
     },
+  ],
+  stock: [
+    detail('transferts/nouveau', 'Nouveau transfert', 'stock.transfer',
+      () => import('./pages/stock/transfer-form.page').then((m) => m.TransferFormPage)),
+    detail('transferts/:id', 'Transfert', 'stock.view',
+      () => import('./pages/stock/transfer-form.page').then((m) => m.TransferFormPage)),
+  ],
+  achats: [
+    detail('bons-de-commande/nouveau', 'Nouveau bon de commande', 'purchasing.manage',
+      () => import('./pages/purchasing/order-form.page').then((m) => m.OrderFormPage)),
+    detail('bons-de-commande/:id', 'Bon de commande', 'purchasing.view',
+      () => import('./pages/purchasing/order-form.page').then((m) => m.OrderFormPage)),
+    detail('receptions/nouvelle', 'Nouvelle réception', 'purchasing.receive',
+      () => import('./pages/purchasing/receipt-form.page').then((m) => m.ReceiptFormPage)),
+    detail('receptions/:id', 'Réception', 'purchasing.view',
+      () => import('./pages/purchasing/receipt-form.page').then((m) => m.ReceiptFormPage)),
   ],
 };
 

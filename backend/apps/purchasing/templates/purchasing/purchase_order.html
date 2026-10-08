@@ -1,0 +1,78 @@
+{% load humanize_fcfa %}<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Bon de commande {{ order.number }}</title>
+<style>
+  @page { size: A4; margin: 18mm 15mm; @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size: 8pt; } }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #222; }
+  header { display: flex; justify-content: space-between; margin-bottom: 18px; }
+  h1 { font-size: 16pt; margin: 0 0 4px; color: #1f5fad; }
+  .muted { color: #666; }
+  .box { border: 1px solid #ccc; border-radius: 4px; padding: 8px 10px; width: 46%; }
+  .parties { display: flex; justify-content: space-between; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #1f5fad; color: #fff; text-align: left; padding: 6px; font-weight: normal; }
+  td { padding: 6px; border-bottom: 1px solid #ddd; }
+  .num { text-align: right; white-space: nowrap; }
+  tfoot td { font-weight: bold; border-top: 2px solid #1f5fad; }
+  .note { margin-top: 16px; }
+  .signature { margin-top: 40px; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>{{ library.name }}</h1>
+    <div class="muted">{{ library.address }} {{ library.city }}</div>
+    <div class="muted">{% if library.phone %}Tél. {{ library.phone }}{% endif %} {% if library.email %}· {{ library.email }}{% endif %}</div>
+    {% if library.taxpayer_number %}<div class="muted">N° compte contribuable : {{ library.taxpayer_number }}</div>{% endif %}
+  </div>
+  <div style="text-align:right">
+    <h1>BON DE COMMANDE</h1>
+    <div><strong>{{ order.number }}</strong></div>
+    <div>Date : {{ order.order_date|date:"d/m/Y" }}</div>
+    {% if order.expected_date %}<div>Livraison souhaitée : {{ order.expected_date|date:"d/m/Y" }}</div>{% endif %}
+  </div>
+</header>
+<div class="parties">
+  <div class="box">
+    <strong>Fournisseur</strong><br>
+    {{ order.supplier.name }}<br>
+    {% if order.supplier.contact_name %}{{ order.supplier.contact_name }}<br>{% endif %}
+    {% if order.supplier.address %}{{ order.supplier.address }}<br>{% endif %}
+    {% if order.supplier.phone %}Tél. {{ order.supplier.phone }}{% endif %}
+  </div>
+  <div class="box">
+    <strong>Livraison</strong><br>
+    {{ order.depot.name }}<br>
+    {% if order.depot.address %}{{ order.depot.address }}{% endif %}
+    {% if order.supplier.payment_terms %}<br>Paiement : {{ order.supplier.payment_terms }}{% endif %}
+  </div>
+</div>
+<table>
+  <thead>
+    <tr><th>Code</th><th>Désignation</th><th class="num">Quantité</th><th class="num">Prix unitaire</th><th class="num">Montant</th></tr>
+  </thead>
+  <tbody>
+    {% for line in lines %}
+    <tr>
+      <td>{{ line.article.code }}</td>
+      <td>{{ line.article.name }}</td>
+      <td class="num">{{ line.quantity }}</td>
+      <td class="num">{{ line.unit_cost|fcfa }}</td>
+      <td class="num">{{ line.amount|fcfa }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr><td colspan="4" class="num">Total</td><td class="num">{{ total|fcfa }}</td></tr>
+  </tfoot>
+</table>
+{% if order.note %}<p class="note"><strong>Note :</strong> {{ order.note|linebreaksbr }}</p>{% endif %}
+<div class="signature">
+  <div>Établi par : {{ order.created_by.get_full_name|default:"" }}</div>
+  <div>Signature et cachet</div>
+</div>
+</body>
+</html>

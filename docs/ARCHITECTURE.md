@@ -146,24 +146,27 @@ librairie/
 (`lot_base_article`, `lot_units`) au lieu d'un modèle `LotDefinition`, et `KitDefinition` s'appelle `Kit`.
 Les prix calculés sont arrondis selon `LibrarySettings.price_rounding` (5 FCFA par défaut).
 
-### stock (phase 3)
+### stock (phase 3, livrée)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
-| `Depot` | `code`, `name`, `kind` (BOUTIQUE, RESERVE), `is_pickup_point`, `address` | — |
-| `Location` | `code` (rayon/emplacement) | FK `depot` |
-| `StockMovement` (ajout seul) | `kind` (PURCHASE, SALE, CUSTOMER_RETURN, SUPPLIER_RETURN, ADJUSTMENT, LOSS, TRANSFER_IN, TRANSFER_OUT, KIT_ASSEMBLY_IN/OUT, KIT_DISASSEMBLY_IN/OUT, RESERVATION, RESERVATION_RELEASE), `quantity` (signée), `unit_cost`, `source_type`, `source_id`, `occurred_at` | FK `article`, `depot`, `user` |
-| `StockLevel` (projection) | `quantity`, `reserved`, `value` | FK `article`, `depot` — recalculée depuis les mouvements |
-| `StockTransfer` + `StockTransferLine` | `number`, `status`, `quantity` | FK `from_depot`, `to_depot`, `article` |
-| `KitAssembly` | `operation` (ASSEMBLE, DISASSEMBLE), `quantity` | FK `kit`, `depot` |
-| `StockAlert` | `kind` (LOW, OUT), `resolved_at` | FK `article`, `depot` |
+| `Depot` | `code`, `name`, `kind` (BOUTIQUE, RESERVE), `address`, `is_pickup_point`, `is_default`, `is_active` | — (dépôts MAG et RES créés par migration) |
+| `Location` | `code`, `label`, `sort_order` | FK `depot` |
+| `StockMovement` (ajout seul, ni modification ni suppression) | `kind` (PURCHASE, SALE, CUSTOMER_RETURN, SUPPLIER_RETURN, ADJUSTMENT, LOSS, TRANSFER_OUT/IN, ASSEMBLY_IN/OUT, DISASSEMBLY_IN/OUT, RESERVATION, RESERVATION_RELEASE, OPENING), `quantity` (signée, unités de base), `unit_cost`, `reference`, `reason`, `source_type`, `source_id`, `occurred_at` | FK `article`, `depot`, `user` |
+| `StockLevel` (projection) | `quantity` (physique), `reserved` | FK `article`, `depot`, `location` — reconstructible (`rebuild_stock_levels`) |
+| `StockTransfer` + `StockTransferLine` | `number` (TR-AAAA-00001), `status` (DRAFT, VALIDATED, CANCELLED), `quantity` | FK `from_depot`, `to_depot`, `article` |
+| `KitAssembly` | `number` (ASM-…), `operation` (ASSEMBLE, DISASSEMBLE), `quantity` | FK `kit`, `depot`, `user` |
+| `StockAlert` | `kind` (LOW, OUT), `available`, `threshold`, `resolved_at` | FK `article` |
 
-### purchasing (phase 3)
+`Device.depot` (accounts) rattache un terminal à un dépôt.
+
+### purchasing (phase 3, livrée)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
-| `Supplier` | `name`, `contact`, `phone`, `email`, `address`, `payment_terms` | — |
-| `PurchaseOrder` | `number`, `status` (DRAFT, SENT, PARTIAL, RECEIVED, CANCELLED), `expected_at`, `total` | FK `supplier`, `depot` |
-| `PurchaseOrderLine` | `quantity`, `unit_cost`, `received_qty` | FK `order`, `article` |
-| `GoodsReceipt` + `GoodsReceiptLine` | `number`, `received_at`, `quantity`, `unit_cost` | FK `purchase_order` (nullable), `depot`, `article` |
+| `Supplier` | `name`, `contact_name`, `phone`, `email`, `address`, `payment_terms`, `lead_time_days`, `is_active` | — |
+| `SupplierArticle` | `supplier_reference`, `last_cost`, `last_received_at` | FK `supplier`, `article` |
+| `PurchaseOrder` | `number` (BC-AAAA-00001), `status` (DRAFT, SENT, PARTIAL, RECEIVED, CANCELLED), `order_date`, `expected_date` | FK `supplier`, `depot` |
+| `PurchaseOrderLine` | `quantity`, `unit_cost`, `received_quantity` | FK `order`, `article` |
+| `GoodsReceipt` + `GoodsReceiptLine` | `number` (REC-…), `received_at`, `delivery_note`, `quantity`, `unit_cost` | FK `supplier`, `depot`, `purchase_order` (nullable), `order_line` (nullable) |
 
 ### inventory (phase 6)
 | Modèle | Champs principaux | Relations |

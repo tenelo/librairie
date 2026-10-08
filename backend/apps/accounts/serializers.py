@@ -239,6 +239,7 @@ class DeviceSerializer(serializers.ModelSerializer):
     # Champ redéclaré : le code est mis en majuscules avant le contrôle de format du modèle.
     code = serializers.CharField(max_length=10)
     registered_by_name = serializers.CharField(source="registered_by.get_full_name", read_only=True, default=None)
+    depot_code = serializers.CharField(source="depot.code", read_only=True, default=None)
 
     class Meta:
         model = Device
@@ -247,6 +248,8 @@ class DeviceSerializer(serializers.ModelSerializer):
             "code",
             "name",
             "kind",
+            "depot",
+            "depot_code",
             "is_active",
             "last_seen_at",
             "last_sync_at",

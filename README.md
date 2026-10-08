@@ -17,7 +17,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 |---|---|---|
 | 1 | Socle : dépôt, Docker, settings, `SyncModel`, comptes, rôles, JWT, workspace Angular, PWA, layout, menus, authentification | **Livrée** |
 | 2 | Catalogue et kits : articles, codes-barres, kits virtuels et pré-assemblés, import/export Excel, étiquettes | **Livrée** |
-| 3 | Stock et achats | À venir |
+| 3 | Stock et achats : dépôts, mouvements, CMP, transferts, assemblage de kits, alertes, fournisseurs, bons de commande, réceptions, suggestions | **Livrée** |
 | 4 | Couche hors connexion (Dexie, outbox, sync) | À venir |
 | 5 | Ventes et caisse | À venir |
 | 6 | Inventaires | À venir |
@@ -27,8 +27,31 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 10 | Audit complet, durcissement | À venir |
 | 11 | Données de démonstration et documentation complète | À venir |
 
+Sous Windows, WeasyPrint (PDF) nécessite les bibliothèques GTK : sans elles, le bouton PDF répond par un
+message explicite et la version imprimable HTML reste disponible. L'image Docker les inclut.
+
 Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
 de livraison.
+
+### Ce que contient la phase 3
+
+- **Stock multi-dépôts** (magasin et réserve créés d'office) : le stock n'est jamais saisi en valeur absolue.
+  Chaque opération écrit un mouvement signé dans un journal en ajout seul ; le stock = somme des
+  mouvements, ce qui permettra à plusieurs caisses hors ligne de vendre sans se contredire. Les lots sont
+  convertis en unités de leur article de base ; services et kits virtuels n'ont pas de stock propre.
+- **État des stocks** par dépôt (physique, réservé, disponible, valeur au CMP, statut), fiche de stock avec
+  solde progressif, journal des mouvements filtrable.
+- **Transferts** entre dépôts avec bon de transfert imprimable ; **pertes, casse et ajustements** avec motif
+  obligatoire (tracés dans l'audit) ; **assemblage / désassemblage** des kits pré-assemblés.
+- Opérations manuelles refusées si le stock du dépôt est insuffisant (les ventes hors ligne, elles, seront
+  toujours acceptées puis signalées).
+- **Alertes** stock bas / rupture, recalculées à chaque mouvement et toutes les heures (Celery beat).
+- **Achats** : fournisseurs, bons de commande (brouillon → envoyé → partiellement reçu → reçu, annulation,
+  solde du reliquat), PDF WeasyPrint et version imprimable, réceptions totales ou partielles avec ou sans
+  commande (idempotentes), **CMP recalculé** à chaque réception (et coût des kits mis à jour),
+  **suggestions de réapprovisionnement** (seuil + ventes pendant le délai fournisseur) transformables en
+  bons de commande par fournisseur.
+- Un terminal peut être rattaché à un dépôt (proposé par défaut dans les formulaires).
 
 ### Ce que contient la phase 2
 
@@ -94,6 +117,8 @@ pip install -r requirements-dev.txt
 python manage.py migrate
 python manage.py ensure_admin --username admin --password "Admin-Librairie-2026"
 python manage.py runserver
+# Contrôle de cohérence du stock (reconstruit les niveaux depuis le journal) :
+python manage.py rebuild_stock_levels
 ```
 
 L'API répond sur http://127.0.0.1:8000/api/ et la documentation sur http://127.0.0.1:8000/api/docs/.

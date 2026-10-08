@@ -178,6 +178,8 @@ export interface Kit {
   notes: string;
   components: KitComponent[];
   pricing: KitPricingBreakdown;
+  /** Kits vendables tous dépôts (composant le plus limitant, ou stock propre si pré-assemblé). */
+  availability: number;
   sync_version: number;
   updated_at: string;
 }

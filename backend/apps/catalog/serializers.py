@@ -21,6 +21,7 @@ from .models import (
 from .services import (
     PRICE_FIELDS,
     add_internal_barcode,
+    article_availability,
     compute_kit_pricing,
     next_article_code,
     refresh_kit_price,
@@ -320,6 +321,7 @@ class KitSerializer(serializers.ModelSerializer):
     school_year_label = serializers.CharField(source="school_year.label", read_only=True, default=None)
     components = KitComponentSerializer(many=True)
     pricing = serializers.SerializerMethodField()
+    availability = serializers.SerializerMethodField()
 
     class Meta:
         model = Kit
@@ -327,12 +329,21 @@ class KitSerializer(serializers.ModelSerializer):
             "id", "article_id", "code", "name", "description", "category", "retail_price", "is_active", "is_online",
             "barcodes", "level", "level_label", "school", "school_name", "school_year", "school_year_label",
             "pricing_mode", "discount_percent", "stock_mode", "notes", "components", "pricing",
-            "sync_version", "updated_at",
+            "availability", "sync_version", "updated_at",
         ]
         read_only_fields = ["sync_version", "updated_at"]
 
     def get_pricing(self, obj) -> dict:
         return compute_kit_pricing(obj).as_dict()
+
+    def get_availability(self, obj) -> int:
+        """Kits vendables (tous dépôts) : composant le plus limitant (virtuel) ou stock propre (pré-assemblé)."""
+        from apps.stock.services import stock_lookup
+
+        lookup = self.context.get("stock_lookup")
+        if lookup is None:
+            lookup = self.context["stock_lookup"] = stock_lookup()
+        return article_availability(obj.article, lookup) or 0
 
     def validate_components(self, value):
         if not value:

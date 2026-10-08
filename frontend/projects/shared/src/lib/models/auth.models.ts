@@ -84,6 +84,8 @@ export interface Device {
   code: string;
   name: string;
   kind: DeviceKind;
+  depot: string | null;
+  depot_code: string | null;
   is_active: boolean;
   last_seen_at: string | null;
   last_sync_at: string | null;

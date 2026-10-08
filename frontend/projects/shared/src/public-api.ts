@@ -25,3 +25,6 @@ export * from './lib/catalog/ean13';
 export * from './lib/catalog/kit-pricing';
 export * from './lib/catalog/barcode-svg.component';
 export * from './lib/catalog/catalog-api.service';
+export * from './lib/models/stock.models';
+export * from './lib/models/purchasing.models';
+export * from './lib/stock/stock-api.service';

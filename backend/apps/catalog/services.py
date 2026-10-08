@@ -144,6 +144,16 @@ def refresh_kits_using(article: Article, user=None) -> int:
     return count
 
 
+def refresh_kits_cost_using(article: Article, user=None) -> int:
+    """Recalcule le coût (CMP) de tous les kits contenant l'article, après une réception."""
+    kits = Kit.objects.filter(components__article=article, components__is_deleted=False).distinct()
+    count = 0
+    for kit in kits.select_related("article"):
+        refresh_kit_price(kit, user=user)
+        count += 1
+    return count
+
+
 # --- Disponibilité -------------------------------------------------------------------------
 
 

@@ -11,7 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Device, DeviceKind, DeviceService, apiErrorMessage } from '@librairie/shared';
+import { Depot, Device, DeviceKind, DeviceService, StockApiService, apiErrorMessage } from '@librairie/shared';
 
 import { AdminApiService } from '../../services/admin-api.service';
 
@@ -67,6 +67,15 @@ import { AdminApiService } from '../../services/admin-api.service';
               <mat-option value="POSTE">Poste de travail</mat-option>
             </mat-select>
           </mat-form-field>
+          <mat-form-field>
+            <mat-label>Dépôt</mat-label>
+            <mat-select formControlName="depot">
+              <mat-option [value]="null">—</mat-option>
+              @for (d of depots(); track d.id) {
+                <mat-option [value]="d.id">{{ d.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
           <button mat-flat-button type="submit" [disabled]="form.invalid">Enregistrer</button>
         </form>
       </mat-card-content>
@@ -84,7 +93,7 @@ import { AdminApiService } from '../../services/admin-api.service';
         </ng-container>
         <ng-container matColumnDef="kind">
           <th mat-header-cell *matHeaderCellDef>Type</th>
-          <td mat-cell *matCellDef="let d">{{ kindLabel(d.kind) }}</td>
+          <td mat-cell *matCellDef="let d">{{ kindLabel(d.kind) }}<br /><small>{{ d.depot_code ?? 'sans dépôt' }}</small></td>
         </ng-container>
         <ng-container matColumnDef="seen">
           <th mat-header-cell *matHeaderCellDef>Dernière activité</th>
@@ -147,6 +156,7 @@ import { AdminApiService } from '../../services/admin-api.service';
 })
 export class DevicesPage {
   private readonly api = inject(AdminApiService);
+  private readonly stockApi = inject(StockApiService);
   private readonly deviceService = inject(DeviceService);
   private readonly snack = inject(MatSnackBar);
 
@@ -158,9 +168,12 @@ export class DevicesPage {
     code: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]{2,10}$/)]],
     name: ['', Validators.required],
     kind: ['CAISSE' as DeviceKind, Validators.required],
+    depot: [null as string | null],
   });
+  protected readonly depots = signal<Depot[]>([]);
 
   constructor() {
+    this.stockApi.listDepots().subscribe((depots) => this.depots.set(depots.filter((d) => d.is_active)));
     this.load();
   }
 
@@ -172,7 +185,7 @@ export class DevicesPage {
     this.api.createDevice(this.form.getRawValue()).subscribe({
       next: (device) => {
         this.snack.open(`Terminal ${device.code} enregistré.`);
-        this.form.reset({ code: '', name: '', kind: 'CAISSE' });
+        this.form.reset({ code: '', name: '', kind: 'CAISSE', depot: null });
         this.load();
       },
       error: (err: unknown) => this.fail(err),
@@ -180,7 +193,7 @@ export class DevicesPage {
   }
 
   protected useOnThisDevice(device: Device): void {
-    this.deviceService.register({ code: device.code, name: device.name });
+    this.deviceService.register({ code: device.code, name: device.name, depot: device.depot });
     this.snack.open(`Ce poste utilise désormais le terminal ${device.code}.`);
   }
 

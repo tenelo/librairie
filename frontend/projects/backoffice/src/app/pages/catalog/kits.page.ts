@@ -131,6 +131,10 @@ import { KitDuplicateDialogComponent, KitDuplicateDialogData } from './kit-dupli
               @if (k.pricing.margin_rate !== null) { ({{ +k.pricing.margin_rate | number: '1.1-1' }} %) }</small>
           </td>
         </ng-container>
+        <ng-container matColumnDef="availability">
+          <th mat-header-cell *matHeaderCellDef class="num">Disponibles</th>
+          <td mat-cell *matCellDef="let k" class="num" [style.color]="k.availability <= 0 ? 'var(--mat-sys-error)' : null">{{ k.availability }}</td>
+        </ng-container>
         <ng-container matColumnDef="mode">
           <th mat-header-cell *matHeaderCellDef>Stock</th>
           <td mat-cell *matCellDef="let k">
@@ -181,7 +185,7 @@ export class KitsPage {
   protected readonly network = inject(NetworkStatusService);
   protected readonly canManage = inject(AuthService).hasPermission('catalog.manage');
 
-  protected readonly columns = ['name', 'level', 'school', 'components', 'price', 'mode', 'actions'];
+  protected readonly columns = ['name', 'level', 'school', 'components', 'price', 'availability', 'mode', 'actions'];
   protected readonly pageSize = 50;
   protected readonly kits = signal<Kit[]>([]);
   protected readonly levels = signal<SchoolLevel[]>([]);

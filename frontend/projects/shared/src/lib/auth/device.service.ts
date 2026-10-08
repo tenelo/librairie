@@ -5,6 +5,8 @@ const DEVICE_KEY = 'librairie.device';
 export interface LocalDevice {
   code: string;
   name: string;
+  /** Dépôt rattaché au terminal (ventes, réceptions, mouvements). */
+  depot?: string | null;
 }
 
 /**
@@ -16,7 +18,7 @@ export class DeviceService {
   readonly device = signal<LocalDevice | null>(this.load());
 
   register(device: LocalDevice): void {
-    const normalized = { code: device.code.trim().toUpperCase(), name: device.name };
+    const normalized = { code: device.code.trim().toUpperCase(), name: device.name, depot: device.depot ?? null };
     localStorage.setItem(DEVICE_KEY, JSON.stringify(normalized));
     this.device.set(normalized);
   }
