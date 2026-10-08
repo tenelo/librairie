@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, input, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,8 +20,13 @@ import {
   StockApiService,
   Supplier,
   apiErrorMessage,
+  GoodsReceiptInput,
+  OfflineDataService,
+  OutboxService,
+  SyncEngineService,
   defaultDepotId,
 } from '@librairie/shared';
+import { catchError, from, map } from 'rxjs';
 
 import { EditableLine, LinesEditorComponent } from '../stock/lines-editor.component';
 
@@ -104,7 +110,7 @@ export function linesFromOrder(order: PurchaseOrder): EditableLine[] {
         </mat-card-content>
       </mat-card>
       <div class="actions">
-        <button mat-flat-button type="button" (click)="submit()" [disabled]="form.invalid || !hasQuantities() || busy() || !network.online()">
+        <button mat-flat-button type="button" (click)="submit()" [disabled]="form.invalid || !hasQuantities() || busy()">
           <mat-icon>check</mat-icon> Valider la réception
         </button>
       </div>
@@ -120,6 +126,9 @@ export class ReceiptFormPage implements OnInit {
   private readonly snack = inject(MatSnackBar);
   private readonly device = inject(DeviceService).device;
   protected readonly network = inject(NetworkStatusService);
+  private readonly offline = inject(OfflineDataService);
+  private readonly outbox = inject(OutboxService);
+  private readonly sync = inject(SyncEngineService);
 
   readonly id = input<string | undefined>(undefined);
 
@@ -149,8 +158,13 @@ export class ReceiptFormPage implements OnInit {
       });
       return;
     }
-    this.api.listSuppliers({ is_active: true }).subscribe((page) => this.suppliers.set(page.results));
-    this.stockApi.listDepots().subscribe((depots) => {
+    // Hors connexion, fournisseurs, dépôts et bons en attente viennent de la base locale.
+    this.api.listSuppliers({ is_active: true }).pipe(map((page) => page.results),
+      catchError(() => from(this.offline.table('suppliers')).pipe(map((rows) => rows as unknown as Supplier[]))))
+      .subscribe((suppliers) => this.suppliers.set(suppliers.filter((s) => s.is_active)));
+    this.stockApi.listDepots().pipe(
+      catchError(() => from(this.offline.table('depots')).pipe(map((rows) => rows as unknown as Depot[]))),
+    ).subscribe((depots) => {
       this.depots.set(depots.filter((d) => d.is_active));
       if (!this.form.controls.depot.value) {
         this.form.patchValue({ depot: defaultDepotId(depots, this.device()?.depot) ?? '' });
@@ -158,7 +172,11 @@ export class ReceiptFormPage implements OnInit {
     });
     const orderId = this.route.snapshot.queryParamMap.get('commande');
     if (orderId) {
-      this.api.getOrder(orderId).subscribe((order) => {
+      this.api.getOrder(orderId).pipe(catchError(() => from(this.localOrders()).pipe(
+        map((orders) => orders.find((o) => o.id === orderId) as PurchaseOrder)))).subscribe((order) => {
+        if (!order) {
+          return;
+        }
         this.form.patchValue({ supplier: order.supplier, depot: order.depot });
         this.openOrders.set([order]);
         this.form.patchValue({ purchase_order: order.id });
@@ -168,13 +186,19 @@ export class ReceiptFormPage implements OnInit {
     }
   }
 
+  private async localOrders(): Promise<PurchaseOrder[]> {
+    return (await this.offline.table('purchase_orders')) as unknown as PurchaseOrder[];
+  }
+
   protected loadOpenOrders(keep?: string): void {
     const supplier = this.form.controls.supplier.value;
     if (!supplier) {
       return;
     }
-    this.api.listOrders({ supplier, open: true, page_size: 100 }).subscribe((page) => {
-      this.openOrders.set(page.results);
+    this.api.listOrders({ supplier, open: true, page_size: 100 }).pipe(map((page) => page.results),
+      catchError(() => from(this.localOrders()).pipe(map((orders) => orders.filter((o) => o.supplier === supplier)))),
+    ).subscribe((orders) => {
+      this.openOrders.set(orders);
       if (!keep) {
         this.form.patchValue({ purchase_order: null });
         this.lines.set([]);
@@ -201,17 +225,22 @@ export class ReceiptFormPage implements OnInit {
       return;
     }
     this.busy.set(true);
+    const payload: GoodsReceiptInput = {
+      id: this.receiptId,
+      supplier: value.supplier ?? '',
+      depot: value.depot ?? '',
+      purchase_order: value.purchase_order,
+      delivery_note: value.delivery_note ?? '',
+      note: value.note ?? '',
+      lines: this.lines().filter((l) => l.quantity > 0).map((l) => ({ article: l.article, order_line: l.orderLine ?? null,
+        quantity: l.quantity, unit_cost: l.unitCost })),
+    };
+    if (!this.network.online()) {
+      void this.saveOffline(payload);
+      return;
+    }
     this.api
-      .createReceipt({
-        id: this.receiptId,
-        supplier: value.supplier ?? '',
-        depot: value.depot ?? '',
-        purchase_order: value.purchase_order,
-        delivery_note: value.delivery_note ?? '',
-        note: value.note ?? '',
-        lines: this.lines().filter((l) => l.quantity > 0).map((l) => ({ article: l.article, order_line: l.orderLine ?? null,
-          quantity: l.quantity, unit_cost: l.unitCost })),
-      })
+      .createReceipt(payload)
       .subscribe({
         next: (receipt) => {
           this.busy.set(false);
@@ -220,8 +249,28 @@ export class ReceiptFormPage implements OnInit {
         },
         error: (err: unknown) => {
           this.busy.set(false);
+          if (err instanceof HttpErrorResponse && err.status === 0) {
+            void this.saveOffline(payload);
+            return;
+          }
           this.snack.open(apiErrorMessage(err), 'Fermer', { duration: 8000 });
         },
       });
+  }
+
+  /** Réception hors ligne : écrite dans l'outbox (le stock affiché en tient compte) puis envoyée au retour du réseau. */
+  private async saveOffline(payload: GoodsReceiptInput): Promise<void> {
+    const deltas = (await Promise.all(payload.lines.map((line) =>
+      this.offline.stockDeltas(line.article, payload.depot, line.quantity)))).flat();
+    const supplier = this.suppliers().find((s) => s.id === payload.supplier)?.name ?? '';
+    await this.outbox.enqueue('goods_receipt', 'create', { ...payload }, {
+      stockDeltas: deltas, label: `Réception ${supplier} (${payload.lines.length} ligne(s))`,
+    });
+    await this.sync.refreshCounts();
+    void this.sync.requestBackgroundSync();
+    this.busy.set(false);
+    this.snack.open('Hors ligne : réception enregistrée sur ce terminal, elle sera envoyée au retour du réseau.', 'OK',
+      { duration: 8000 });
+    void this.router.navigate(['/achats/receptions']);
   }
 }

@@ -1,0 +1,17 @@
+from django.apps import AppConfig
+
+
+class SyncConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.sync"
+    verbose_name = "Synchronisation"
+
+    def ready(self):
+        # Sources descendantes et gestionnaires d'opérations des applications déjà livrées.
+        from apps.audit import sync_handlers as audit_handlers  # noqa: F401
+        from apps.purchasing import sync_handlers as purchasing_handlers  # noqa: F401
+        from apps.stock import sync_handlers as stock_handlers  # noqa: F401
+
+        from .pull_sources import register_core_sources
+
+        register_core_sources()

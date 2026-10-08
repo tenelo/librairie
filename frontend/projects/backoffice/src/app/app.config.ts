@@ -28,7 +28,7 @@ export const appConfig: ApplicationConfig = {
     { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline' } },
     { provide: MAT_SNACK_BAR_DEFAULT_OPTIONS, useValue: { duration: 4000 } },
     { provide: MatPaginatorIntl, useClass: FrenchPaginatorIntl },
-    provideServiceWorker('ngsw-worker.js', {
+    provideServiceWorker('librairie-sw.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',
     }),

@@ -15,6 +15,9 @@ import {
   DeviceService,
   NetworkIndicatorComponent,
   NetworkStatusService,
+  OfflineAuthService,
+  SyncEngineService,
+  SyncStatusService,
   ThemeService,
 } from '@librairie/shared';
 import { filter, map } from 'rxjs';
@@ -47,6 +50,9 @@ export class ShellComponent {
   protected readonly network = inject(NetworkStatusService);
   protected readonly device = inject(DeviceService).device;
   private readonly router = inject(Router);
+  protected readonly sync = inject(SyncEngineService);
+  protected readonly syncStatus = inject(SyncStatusService);
+  private readonly offlineAuth = inject(OfflineAuthService);
 
   protected readonly isHandset = toSignal(
     inject(BreakpointObserver)
@@ -62,6 +68,7 @@ export class ShellComponent {
   protected readonly menuOpen = signal(false);
 
   constructor() {
+    this.sync.start();
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
       const section = this.currentSection(event.urlAfterRedirects);
       this.expanded.update((set) => new Set(set).add(section));
@@ -83,8 +90,22 @@ export class ShellComponent {
     });
   }
 
-  protected logout(): void {
+  /** Déconnexion explicite : la session mémorisée sur le terminal est oubliée (plus de reprise par PIN). */
+  protected async logout(): Promise<void> {
+    const user = this.auth.user();
+    if (user) {
+      await this.offlineAuth.forget(user.id);
+    }
     this.auth.logout();
+  }
+
+  /** Relais de caissier : la session reste mémorisée, un autre utilisateur reprend la main par PIN. */
+  protected switchUser(): void {
+    void this.router.navigateByUrl('/verrouillage');
+  }
+
+  protected syncNow(): void {
+    void this.sync.syncNow();
   }
 
   private currentSection(url: string): string {

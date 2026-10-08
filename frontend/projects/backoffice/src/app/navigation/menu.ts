@@ -149,9 +149,9 @@ export const MENU: MenuSection[] = [
     icon: 'sync',
     path: 'synchronisation',
     children: [
-      { label: 'État', path: 'etat', permission: 'sync.view', phase: 4 },
-      { label: "File d'attente", path: 'file', permission: 'sync.view', phase: 4 },
-      { label: 'Conflits', path: 'conflits', permission: 'sync.manage', phase: 4 },
+      { label: 'État', path: 'etat', permission: 'sync.view' },
+      { label: "File d'attente", path: 'file', permission: 'sync.view' },
+      { label: 'Conflits', path: 'conflits', permission: 'sync.view', requiresOnline: true },
     ],
   },
   {

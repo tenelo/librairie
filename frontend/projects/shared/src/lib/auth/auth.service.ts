@@ -22,7 +22,9 @@ export class AuthService {
   private readonly config = inject(APP_CONFIG);
   private readonly storage = inject(SessionStorageService);
 
-  private readonly session = signal<StoredSession | null>(this.storage.read());
+  private readonly sessionState = signal<StoredSession | null>(this.storage.read());
+  /** Session courante (lecture seule) : mémorisée par le terminal pour la reprise hors ligne. */
+  readonly session = this.sessionState.asReadonly();
   private refreshInFlight: Observable<string> | null = null;
 
   readonly user = computed<UserProfile | null>(() => this.session()?.user ?? null);
@@ -95,7 +97,8 @@ export class AuthService {
         .pipe(
           map((tokens) => {
             const latest = this.session() ?? current;
-            this.persist({ ...latest, access: tokens.access, refresh: tokens.refresh ?? latest.refresh });
+            this.persist({ ...latest, access: tokens.access, refresh: tokens.refresh ?? latest.refresh,
+              lastOnlineAuthAt: new Date().toISOString() });
             return tokens.access;
           }),
           finalize(() => (this.refreshInFlight = null)),
@@ -121,10 +124,15 @@ export class AuthService {
     }
   }
 
+  /** Rétablit une session mémorisée sur le terminal (reprise hors ligne par PIN, relais de caissier). */
+  restoreSession(session: StoredSession): void {
+    this.persist(session);
+  }
+
   /** Efface la session locale sans appel serveur (jeton expiré, refus du serveur). */
   clearSession(): void {
     this.storage.clear();
-    this.session.set(null);
+    this.sessionState.set(null);
   }
 
   private store(pair: TokenPair): void {
@@ -138,6 +146,6 @@ export class AuthService {
 
   private persist(session: StoredSession): void {
     this.storage.write(session);
-    this.session.set(session);
+    this.sessionState.set(session);
   }
 }

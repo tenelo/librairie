@@ -56,6 +56,11 @@
         </button>
       }
       <lib-network-indicator class="indicators" />
+      <button mat-icon-button type="button" (click)="syncNow()" [disabled]="syncStatus.syncing() || !network.online()"
+              [matTooltip]="syncStatus.syncing() ? 'Synchronisation en cours…' : (sync.lastError() ?? 'Synchroniser maintenant')"
+              aria-label="Synchroniser" [class.spinning]="syncStatus.syncing()">
+        <mat-icon [class.sync-error]="!!sync.lastError() || syncStatus.errorCount() > 0">sync</mat-icon>
+      </button>
       <span class="spacer"></span>
       @if (device(); as d) {
         <span class="device" matTooltip="Terminal de ce poste">
@@ -85,6 +90,10 @@
           <mat-icon>person</mat-icon>
           <span>Mon profil</span>
         </a>
+        <button mat-menu-item type="button" (click)="switchUser()">
+          <mat-icon>switch_account</mat-icon>
+          <span>Changer d'utilisateur (PIN)</span>
+        </button>
         <button mat-menu-item type="button" (click)="logout()">
           <mat-icon>logout</mat-icon>
           <span>Se déconnecter</span>

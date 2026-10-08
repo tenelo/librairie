@@ -8,13 +8,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { catchError, from, map } from 'rxjs';
 import {
   ArticleLookup,
   Depot,
   DeviceService,
   MovementKind,
   NetworkStatusService,
+  OfflineDataService,
+  OutboxService,
   StockApiService,
+  SyncEngineService,
   apiErrorMessage,
   defaultDepotId,
 } from '@librairie/shared';
@@ -71,7 +75,7 @@ type ManualKind = 'LOSS' | 'ADJUSTMENT' | 'OPENING';
             </mat-form-field>
           </div>
           <div class="actions">
-            <button mat-flat-button type="submit" [disabled]="form.invalid || !article() || saving() || !network.online()">
+            <button mat-flat-button type="submit" [disabled]="form.invalid || !article() || saving()">
               Enregistrer
             </button>
           </div>
@@ -88,6 +92,9 @@ export class LossesPage {
   private readonly device = inject(DeviceService).device;
   protected readonly network = inject(NetworkStatusService);
   private readonly history = viewChild(MovementsPage);
+  private readonly outbox = inject(OutboxService);
+  private readonly offline = inject(OfflineDataService);
+  private readonly sync = inject(SyncEngineService);
 
   protected readonly historyKinds: MovementKind[] = ['LOSS', 'ADJUSTMENT', 'OPENING'];
   protected readonly depots = signal<Depot[]>([]);
@@ -102,7 +109,9 @@ export class LossesPage {
   });
 
   constructor() {
-    this.api.listDepots().subscribe((depots) => {
+    this.api.listDepots().pipe(
+      catchError(() => from(this.offline.table('depots')).pipe(map((rows) => rows as unknown as Depot[]))),
+    ).subscribe((depots) => {
       this.depots.set(depots.filter((d) => d.is_active));
       this.form.patchValue({ depot: defaultDepotId(depots, this.device()?.depot) ?? '' });
     });
@@ -115,6 +124,10 @@ export class LossesPage {
       return;
     }
     this.saving.set(true);
+    if (!this.network.online()) {
+      void this.saveOffline(article, value);
+      return;
+    }
     this.api.adjust({ article: article.id, depot: value.depot, kind: value.kind, quantity: Number(value.quantity),
       reason: value.reason.trim() }).subscribe({
       next: (movement) => {
@@ -129,5 +142,29 @@ export class LossesPage {
         this.snack.open(apiErrorMessage(err), 'Fermer', { duration: 8000 });
       },
     });
+  }
+
+  /** Hors ligne, seules les pertes et ajustements sont possibles (le stock initial exige le serveur). */
+  private async saveOffline(article: ArticleLookup, value: { kind: ManualKind; depot: string; quantity: number;
+    reason: string }): Promise<void> {
+    if (value.kind === 'OPENING') {
+      this.saving.set(false);
+      this.snack.open('La saisie du stock initial nécessite une connexion.', 'Fermer');
+      return;
+    }
+    const quantity = value.kind === 'LOSS' ? -Math.abs(Number(value.quantity)) : Number(value.quantity);
+    await this.outbox.enqueue('stock_adjustment', 'create', {
+      // Le serveur rend négative une perte ; un ajustement garde son signe.
+      article: article.id, depot: value.depot, kind: value.kind, quantity: value.kind === 'LOSS' ? -quantity : quantity,
+      reason: value.reason.trim(), movement_id: crypto.randomUUID(),
+    }, {
+      stockDeltas: await this.offline.stockDeltas(article.id, value.depot, quantity),
+      label: `${value.kind === 'LOSS' ? 'Perte' : 'Ajustement'} : ${article.name} (${quantity})`,
+    });
+    await this.sync.refreshCounts();
+    this.saving.set(false);
+    this.article.set(null);
+    this.form.patchValue({ quantity: 1, reason: '' });
+    this.snack.open('Hors ligne : mouvement enregistré sur ce terminal, envoyé au retour du réseau.');
   }
 }

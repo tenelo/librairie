@@ -50,6 +50,20 @@
   flex: 1;
 }
 
+.spinning mat-icon {
+  animation: spin 1s linear infinite;
+}
+
+.sync-error {
+  color: var(--mat-sys-error);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
 .device {
   display: inline-flex;
   align-items: center;

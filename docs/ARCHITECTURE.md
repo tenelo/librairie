@@ -214,11 +214,14 @@ Les prix calculés sont arrondis selon `LibrarySettings.price_rounding` (5 FCFA 
 | `NotificationPreference` | `event`, `in_app`, `push`, `email`, `sms` | FK `user` |
 | `PushSubscription` | `endpoint`, `p256dh`, `auth`, `user_agent` | FK `user`, `device` |
 
-### sync (phase 4)
+### sync (phase 4, livrée)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
-| `SyncOperation` | `id` (UUID de l'opération outbox), `entity`, `operation`, `payload`, `client_timestamp`, `status` (OK, CONFLICT, ERROR), `result` | FK `device`, `user` — garantit l'idempotence |
-| `SyncConflict` | `entity`, `entity_id`, `client_payload`, `server_payload`, `resolution` | FK `operation` |
+| `SyncOperation` | `id` (UUID de l'opération outbox), `entity`, `operation`, `payload`, `client_timestamp`, `status` (ok, conflict, error), `result`, `error` | FK `device`, `user` — garantit l'idempotence |
+| `SyncConflict` | `entity`, `entity_id`, `client_payload`, `server_payload`, `resolution` (client, server), `reviewed_at` | FK `operation` |
+
+Gestionnaires d'opérations (`register_push`) et sources descendantes (`register_pull`) sont déclarés par
+chaque application ; côté terminal, la base Dexie `librairie-backoffice` a une table par source.
 
 ### reports (phase 9)
 | Modèle | Champs principaux | Relations |

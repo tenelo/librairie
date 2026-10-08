@@ -6,8 +6,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService, NetworkStatusService, apiErrorMessage } from '@librairie/shared';
+import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { AuthService, NetworkStatusService, OfflineAuthService, apiErrorMessage } from '@librairie/shared';
+import { firstValueFrom } from 'rxjs';
+
+import { PinCaptureDialogComponent } from './pin-capture-dialog.component';
 
 @Component({
   selector: 'bo-login-page',
@@ -19,6 +23,7 @@ import { AuthService, NetworkStatusService, apiErrorMessage } from '@librairie/s
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
+    RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -74,6 +79,9 @@ import { AuthService, NetworkStatusService, apiErrorMessage } from '@librairie/s
             <button mat-flat-button type="submit" [disabled]="loading() || !network.online()">
               Se connecter
             </button>
+            @if (canUnlock()) {
+              <a mat-button routerLink="/verrouillage"><mat-icon>pin</mat-icon> Reprendre avec mon code PIN</a>
+            }
           </form>
         </mat-card-content>
       </mat-card>
@@ -123,6 +131,19 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   protected readonly network = inject(NetworkStatusService);
+  private readonly offlineAuth = inject(OfflineAuthService);
+  private readonly dialog = inject(MatDialog);
+  protected readonly canUnlock = signal(false);
+
+  constructor() {
+    void this.offlineAuth.unlockableUsers().then((users) => {
+      this.canUnlock.set(users.length > 0);
+      // Hors ligne avec des sessions mémorisées : on propose directement la reprise par PIN.
+      if (users.length && !this.network.online() && !this.route.snapshot.queryParamMap.has('motdepasse')) {
+        void this.router.navigateByUrl('/verrouillage');
+      }
+    });
+  }
 
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -142,8 +163,14 @@ export class LoginPage {
     this.error.set(null);
     const { identifier, password } = this.form.getRawValue();
     this.auth.login(identifier.trim(), password).subscribe({
-      next: (user) => {
+      next: async (user) => {
         this.loading.set(false);
+        await this.offlineAuth.remember(this.auth.session()!);
+        if (user.has_pin && !(await this.offlineAuth.hasLocalPin(user.id))) {
+          await firstValueFrom(this.dialog.open(PinCaptureDialogComponent, {
+            data: { userId: user.id, username: user.username }, width: '420px', maxWidth: '95vw',
+          }).afterClosed());
+        }
         const target = this.route.snapshot.queryParamMap.get('retour');
         const destination = user.must_change_password ? '/mon-profil' : target || '/';
         void this.router.navigateByUrl(destination);

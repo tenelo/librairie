@@ -5,7 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AuthService, NetworkStatusService, apiErrorMessage } from '@librairie/shared';
+import { AuthService, NetworkStatusService, OfflineAuthService, apiErrorMessage } from '@librairie/shared';
 
 import { AdminApiService } from '../../services/admin-api.service';
 
@@ -104,6 +104,7 @@ export class ProfilePage {
   protected readonly auth = inject(AuthService);
   protected readonly network = inject(NetworkStatusService);
   private readonly api = inject(AdminApiService);
+  private readonly offlineAuth = inject(OfflineAuthService);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder).nonNullable;
 
@@ -135,15 +136,19 @@ export class ProfilePage {
     this.api.setPin(password, pin).subscribe({
       next: () => {
         this.pinForm.reset();
-        this.refreshProfile('Code PIN enregistré.');
+        this.refreshProfile('Code PIN enregistré (utilisable hors connexion sur ce terminal).', pin);
       },
       error: (err: unknown) => this.fail(err),
     });
   }
 
-  private refreshProfile(message: string): void {
+  private refreshProfile(message: string, localPin?: string): void {
     this.auth.reloadProfile().subscribe({
-      next: () => {
+      next: async (user) => {
+        if (localPin) {
+          await this.offlineAuth.remember(this.auth.session()!);
+          await this.offlineAuth.setLocalPin(user.id, localPin);
+        }
         this.busy.set(false);
         this.snack.open(message);
       },

@@ -31,6 +31,9 @@ const IMPLEMENTED: Record<string, LazyComponent> = {
   'achats/bons-de-commande': () => import('./pages/purchasing/orders.page').then((m) => m.OrdersPage),
   'achats/receptions': () => import('./pages/purchasing/receipts.page').then((m) => m.ReceiptsPage),
   'achats/suggestions': () => import('./pages/purchasing/suggestions.page').then((m) => m.SuggestionsPage),
+  'synchronisation/etat': () => import('./pages/sync/sync-state.page').then((m) => m.SyncStatePage),
+  'synchronisation/file': () => import('./pages/sync/sync-queue.page').then((m) => m.SyncQueuePage),
+  'synchronisation/conflits': () => import('./pages/sync/sync-conflicts.page').then((m) => m.SyncConflictsPage),
   'administration/depots': () => import('./pages/admin/depots.page').then((m) => m.DepotsPage),
 };
 
@@ -127,6 +130,11 @@ export const routes: Routes = [
     title: 'Connexion · Librairie',
     canMatch: [guestGuard],
     loadComponent: () => import('./pages/login/login.page').then((m) => m.LoginPage),
+  },
+  {
+    path: 'verrouillage',
+    title: 'Reprendre la main · Librairie',
+    loadComponent: () => import('./pages/login/unlock.page').then((m) => m.UnlockPage),
   },
   {
     path: '',

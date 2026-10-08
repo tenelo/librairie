@@ -5,11 +5,11 @@ import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/ma
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { ArticleLookup, CatalogApiService, FcfaPipe } from '@librairie/shared';
+import { ArticleLookup, FcfaPipe, OfflineDataService } from '@librairie/shared';
 import { catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 
 /**
- * Recherche d'article par nom, code ou code-barres. Une saisie de douchette (code suivi
+ * Recherche d'article par nom, code ou code-barres (base locale si hors connexion). Une saisie de douchette (code suivi
  * de « Entrée ») sélectionne directement l'article correspondant.
  */
 @Component({
@@ -55,7 +55,7 @@ import { catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'r
   `,
 })
 export class ArticlePickerComponent {
-  private readonly api = inject(CatalogApiService);
+  private readonly data = inject(OfflineDataService);
 
   readonly label = input('Ajouter un article');
   readonly excludeKits = input(true);
@@ -68,7 +68,7 @@ export class ArticlePickerComponent {
       distinctUntilChanged(),
       switchMap((term) =>
         typeof term === 'string' && term.trim().length >= 2
-          ? this.api.lookupArticles(term.trim(), this.excludeKits()).pipe(catchError(() => of([])))
+          ? this.data.searchArticles(term.trim(), this.excludeKits()).pipe(catchError(() => of([])))
           : of([]),
       ),
     ),
@@ -87,21 +87,11 @@ export class ArticlePickerComponent {
       return;
     }
     event.preventDefault();
-    this.api.articleByBarcode(code).subscribe({
-      next: (article) => {
-        this.picked.emit({
-          id: article.id,
-          code: article.code,
-          name: article.name,
-          type: article.type,
-          retail_price: article.retail_price,
-          avg_cost: article.avg_cost,
-          is_active: article.is_active,
-          barcode: code,
-        });
+    this.data.articleByBarcode(code).subscribe((article) => {
+      if (article) {
+        this.picked.emit(article);
         this.term.set('');
-      },
-      error: () => undefined,
+      }
     });
   }
 }

@@ -123,6 +123,8 @@ def receive_goods(*, supplier, depot, lines, user=None, purchase_order=None, rec
 
     if purchase_order is not None:
         _refresh_order_status(purchase_order)
+        # Nouvelle version du bon : les terminaux reçoivent les reliquats à jour.
+        purchase_order.save(update_fields=["updated_at"])
     refresh_alerts(touched)
     return receipt
 

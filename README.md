@@ -18,7 +18,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 1 | Socle : dépôt, Docker, settings, `SyncModel`, comptes, rôles, JWT, workspace Angular, PWA, layout, menus, authentification | **Livrée** |
 | 2 | Catalogue et kits : articles, codes-barres, kits virtuels et pré-assemblés, import/export Excel, étiquettes | **Livrée** |
 | 3 | Stock et achats : dépôts, mouvements, CMP, transferts, assemblage de kits, alertes, fournisseurs, bons de commande, réceptions, suggestions | **Livrée** |
-| 4 | Couche hors connexion (Dexie, outbox, sync) | À venir |
+| 4 | Couche hors connexion : base locale Dexie, outbox, `sync/push` et `sync/pull` idempotents, conflits, PIN hors ligne, écrans de synchronisation | **Livrée** |
 | 5 | Ventes et caisse | À venir |
 | 6 | Inventaires | À venir |
 | 7 | Boutique et commandes en ligne | À venir |
@@ -32,6 +32,34 @@ message explicite et la version imprimable HTML reste disponible. L'image Docker
 
 Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
 de livraison.
+
+### Ce que contient la phase 4 (mode hors connexion)
+
+- **Base locale IndexedDB (Dexie)** du backoffice : miroirs du catalogue, kits, codes-barres, stocks,
+  dépôts, référentiels, paramètres, fournisseurs et bons en attente, plus une table `outbox`.
+- **Outbox** : toute opération faite hors ligne (réception, perte/casse, ajustement, événement d'audit…)
+  est écrite localement avec un UUID v4 généré sur le terminal, la date client et le code terminal.
+  Le stock affiché = dernier stock synchronisé + mouvements locaux non encore envoyés.
+- **`POST /api/sync/push/`** : traitement par lot, **idempotent** (une opération rejouée renvoie le
+  résultat mémorisé, jamais de doublon), réponse par opération `ok` / `conflict` / `error`.
+- **`GET /api/sync/pull/?since=<curseur>`** : toutes les modifications depuis le curseur global
+  (`sync_version`), suppressions logiques comprises, paginées sans trou.
+- Déclenchement : au démarrage, au retour du réseau, toutes les N minutes (paramètre), bouton
+  « Synchroniser » et Background Sync (service worker `librairie-sw.js`) quand le navigateur la propose.
+  Réessais avec backoff exponentiel (5 s → 15 min) ; les refus définitifs restent visibles dans
+  **Synchronisation › File d'attente** (relance ou abandon).
+- **Conflits** sur données modifiables : « dernier écrit gagne » selon `sync_version` et les dates,
+  tracés dans **Synchronisation › Conflits** et dans l'audit (les prix et fiches articles restent
+  modifiables uniquement en ligne).
+- **Authentification hors ligne** : après une connexion en ligne, le profil et les jetons sont gardés
+  sur le terminal ; le PIN (vérifié par le serveur, conservé haché PBKDF2) permet de reprendre la main
+  hors ligne pendant la durée maximale paramétrée (72 h par défaut) et à plusieurs caissiers de se
+  relayer (menu utilisateur › « Changer d'utilisateur »).
+
+**Tester le hors ligne** : ouvrir le backoffice compilé (Docker ou `ng build` + serveur HTTPS/localhost),
+se connecter une fois en ligne en saisissant son PIN, puis couper le réseau (DevTools › Network ›
+Offline) : enregistrer une perte ou une réception, constater « 1 en attente », rétablir le réseau et
+vérifier le mouvement dans **Stock › Mouvements**.
 
 ### Ce que contient la phase 3
 
