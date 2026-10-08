@@ -7,6 +7,7 @@ import secrets
 
 import django_filters
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, serializers, viewsets
 from rest_framework.decorators import action
@@ -128,7 +129,7 @@ class CashSessionViewSet(viewsets.ReadOnlyModelViewSet):
                             "z_report": "cash.open_close"}
     filterset_fields = ["device", "status", "depot"]
 
-    @extend_schema(responses=serializers.DictField())
+    @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["get"], url_path="z-report")
     def z_report(self, request, pk=None):
         return Response(services.z_report(self.get_object()))

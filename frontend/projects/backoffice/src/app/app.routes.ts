@@ -34,6 +34,17 @@ const IMPLEMENTED: Record<string, LazyComponent> = {
   'synchronisation/etat': () => import('./pages/sync/sync-state.page').then((m) => m.SyncStatePage),
   'synchronisation/file': () => import('./pages/sync/sync-queue.page').then((m) => m.SyncQueuePage),
   'synchronisation/conflits': () => import('./pages/sync/sync-conflicts.page').then((m) => m.SyncConflictsPage),
+  'caisse/nouvelle-vente': () => import('./pages/sales/pos.page').then((m) => m.PosPage),
+  'caisse/en-attente': () => import('./pages/sales/held.page').then((m) => m.HeldPage),
+  'caisse/historique': () => import('./pages/sales/history.page').then((m) => m.HistoryPage),
+  'caisse/retours': () => import('./pages/sales/returns.page').then((m) => m.ReturnsPage),
+  'caisse/sessions': () => import('./pages/sales/sessions.page').then((m) => m.SessionsPage),
+  'caisse/rapports-z': () => import('./pages/sales/z-reports.page').then((m) => m.ZReportsPage),
+  'clients/liste': () => import('./pages/customers/customers.page').then((m) => m.CustomersPage),
+  'clients/credits': () => import('./pages/customers/credits.page').then((m) => m.CreditsPage),
+  'clients/fidelite': () => import('./pages/customers/loyalty.page').then((m) => m.LoyaltyPage),
+  'administration/moyens-de-paiement': () =>
+    import('./pages/admin/payment-methods.page').then((m) => m.PaymentMethodsPage),
   'administration/depots': () => import('./pages/admin/depots.page').then((m) => m.DepotsPage),
 };
 

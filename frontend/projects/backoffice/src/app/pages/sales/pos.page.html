@@ -1,0 +1,149 @@
+@if (!register.current()) {
+  <p class="offline-note">
+    <mat-icon inline>point_of_sale</mat-icon> Aucune caisse ouverte sur ce terminal.
+    <a mat-button routerLink="/caisse/sessions">Ouvrir la caisse</a>
+  </p>
+}
+<div class="pos">
+  <section class="catalog">
+    <div class="search">
+      <mat-icon>qr_code_scanner</mat-icon>
+      <input #searchBox type="text" [(ngModel)]="term" (input)="search()" (keydown.enter)="onEnter()"
+             placeholder="Rechercher ou scanner (F2)" aria-label="Rechercher ou scanner un article" autocomplete="off" />
+    </div>
+
+    @if (results().length) {
+      <div class="grid">
+        @for (a of results(); track a.id) {
+          <button type="button" class="tile" (click)="add(a); term = ''; results.set([])">
+            <span class="tile-name">{{ a['name'] }}</span>
+            <span class="tile-price">{{ $any(a['retail_price']) | fcfa }}</span>
+          </button>
+        }
+      </div>
+    } @else {
+      <h3>Kits par niveau</h3>
+      <mat-chip-listbox aria-label="Niveaux">
+        @for (l of levels(); track l.id) {
+          <mat-chip-option [selected]="selectedLevel() === l.id" (click)="showLevel(l.id)">{{ l['label'] }}</mat-chip-option>
+        }
+      </mat-chip-listbox>
+      @if (selectedLevel()) {
+        <div class="grid">
+          @for (k of levelKits(); track k.id) {
+            <button type="button" class="tile kit" (click)="add(k)">
+              <mat-icon>backpack</mat-icon>
+              <span class="tile-name">{{ k['name'] }}</span>
+              <span class="tile-price">{{ $any(k['retail_price']) | fcfa }}</span>
+            </button>
+          } @empty {
+            <p class="muted">Aucun kit pour ce niveau.</p>
+          }
+        </div>
+      }
+      <h3>Articles fréquents</h3>
+      <div class="grid">
+        @for (a of favorites(); track a.id) {
+          <button type="button" class="tile" (click)="add(a)">
+            <span class="tile-name">{{ a['name'] }}</span>
+            <span class="tile-price">{{ $any(a['retail_price']) | fcfa }}</span>
+            @if (stockOf(a.id) !== null && a['type'] !== 'SERVICE') {
+              <span class="tile-stock" [class.low]="stockOf(a.id)! <= 0">stock {{ stockOf(a.id) }}</span>
+            }
+          </button>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="cart">
+    <div class="customer">
+      @if (customer(); as c) {
+        <div class="chosen">
+          <mat-icon>person</mat-icon>
+          <div><strong>{{ c['name'] }}</strong> <small>{{ c['phone'] }}</small><br />
+            <small>{{ c['loyalty_points'] }} point(s) · crédit {{ $any(c['credit_balance']) | fcfa }}</small></div>
+          <button mat-icon-button type="button" (click)="chooseCustomer(null)" aria-label="Retirer le client"><mat-icon>close</mat-icon></button>
+        </div>
+      } @else {
+        <input id="pos-customer" type="text" [(ngModel)]="customerTerm" (input)="searchCustomers()"
+               placeholder="Client (F8) — vente anonyme par défaut" aria-label="Rechercher un client" autocomplete="off" />
+        <button mat-icon-button type="button" (click)="createCustomer()" matTooltip="Nouveau client" aria-label="Nouveau client">
+          <mat-icon>person_add</mat-icon>
+        </button>
+        @if (customerResults().length) {
+          <ul class="customer-results">
+            @for (c of customerResults(); track c.id) {
+              <li><button type="button" (click)="chooseCustomer(c)">{{ c['name'] }} <small>{{ c['phone'] }}</small></button></li>
+            }
+          </ul>
+        }
+      }
+    </div>
+
+    <div class="lines">
+      @for (line of lines(); track line.id) {
+        <div class="line">
+          <div class="line-name">
+            <strong>{{ line.description }}</strong>
+            <small>{{ unitPrice(line).price | fcfa }}@if (unitPrice(line).kind === 'WHOLESALE') { · prix de gros }
+              @if (stockOf(line.article.id) !== null && stockOf(line.article.id)! < line.quantity && line.article.type !== 'SERVICE') {
+                <span class="warn"> · stock {{ stockOf(line.article.id) }}</span>
+              }</small>
+            @if (line.kitAdjustments) { <small class="kit-note">Kit personnalisé</small> }
+          </div>
+          <div class="qty">
+            <button mat-icon-button type="button" (click)="setQuantity(line, line.quantity - 1)" aria-label="Diminuer"><mat-icon>remove</mat-icon></button>
+            <input type="number" min="1" [value]="line.quantity" (change)="setQuantity(line, $any($event.target).value)"
+                   [attr.aria-label]="'Quantité ' + line.description" />
+            <button mat-icon-button type="button" (click)="setQuantity(line, line.quantity + 1)" aria-label="Augmenter"><mat-icon>add</mat-icon></button>
+          </div>
+          <div class="amount">{{ lineTotal(line) | fcfa }}
+            @if (line.discount) { <small>−{{ line.discount | fcfa }}</small> }</div>
+          <button mat-icon-button type="button" [matMenuTriggerFor]="lineMenu" aria-label="Options de la ligne"><mat-icon>more_vert</mat-icon></button>
+          <mat-menu #lineMenu="matMenu">
+            @if (line.article.type === 'KIT') {
+              <button mat-menu-item type="button" (click)="customize(line)"><mat-icon>tune</mat-icon> Personnaliser le kit</button>
+            }
+            <div mat-menu-item disableRipple (click)="$event.stopPropagation()">
+              <label>Remise ligne <input type="number" min="0" class="small" [value]="line.discount"
+                                         (change)="setLineDiscount(line, $any($event.target).value)" /></label>
+            </div>
+            <button mat-menu-item type="button" (click)="remove(line)"><mat-icon>delete</mat-icon> Retirer</button>
+          </mat-menu>
+        </div>
+      } @empty {
+        <p class="empty">Panier vide : scannez ou touchez un article.</p>
+      }
+    </div>
+
+    <div class="totals">
+      <label>Remise globale (FCFA)
+        <input type="number" min="0" class="small" [value]="globalDiscount()" (change)="setGlobalDiscount($any($event.target).value)" />
+      </label>
+      @if (customer() && $any(customer()!['loyalty_points']) > 0) {
+        <label>Points utilisés ({{ pointValue() }} FCFA/pt)
+          <input type="number" min="0" class="small" [value]="pointsUsed()" (change)="setPoints($any($event.target).value)" />
+        </label>
+      }
+      @if (totals().gross !== totals().total) {
+        <div><span>Brut</span><span>{{ totals().gross | fcfa }}</span></div>
+        <div><span>Remises ({{ totals().discountPercent.toFixed(1) }} %)</span>
+          <span>−{{ totals().gross - totals().total | fcfa }}</span></div>
+      }
+      @if (needsAuthorization()) {
+        <div class="warn">Remise au-delà de votre plafond ({{ maxDiscount() }} %) : autorisation d'un responsable requise
+          @if (authorizedBy()) { — accordée par {{ authorizedBy() }} }</div>
+      }
+      <div class="grand"><span>Total</span><span>{{ totals().total | fcfa }}</span></div>
+    </div>
+
+    <div class="actions">
+      <button mat-stroked-button type="button" (click)="reset()" [disabled]="!lines().length">Annuler</button>
+      <button mat-stroked-button type="button" (click)="hold()" [disabled]="!lines().length">En attente (F4)</button>
+      <button mat-flat-button type="button" class="pay" (click)="pay()" [disabled]="!lines().length || busy()">
+        <mat-icon>payments</mat-icon> Encaisser (F9)
+      </button>
+    </div>
+  </section>
+</div>

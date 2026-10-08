@@ -19,7 +19,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 2 | Catalogue et kits : articles, codes-barres, kits virtuels et pré-assemblés, import/export Excel, étiquettes | **Livrée** |
 | 3 | Stock et achats : dépôts, mouvements, CMP, transferts, assemblage de kits, alertes, fournisseurs, bons de commande, réceptions, suggestions | **Livrée** |
 | 4 | Couche hors connexion : base locale Dexie, outbox, `sync/push` et `sync/pull` idempotents, conflits, PIN hors ligne, écrans de synchronisation | **Livrée** |
-| 5 | Ventes et caisse | À venir |
+| 5 | Ventes et caisse : écran de caisse hors ligne, paiements multiples, reçus 58/80 mm et A4/A5, retours, ouverture/clôture, rapport Z, clients, crédit, avoirs, bons, fidélité | **Livrée** |
 | 6 | Inventaires | À venir |
 | 7 | Boutique et commandes en ligne | À venir |
 | 8 | Notifications | À venir |
@@ -32,6 +32,36 @@ message explicite et la version imprimable HTML reste disponible. L'image Docker
 
 Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
 de livraison.
+
+### Ce que contient la phase 5 (ventes et caisse)
+
+- **Écran de caisse** (Caisse › Nouvelle vente) entièrement utilisable hors ligne : recherche, scan
+  douchette (code + Entrée), articles fréquents, kits par niveau, disponibilité affichée, quantités,
+  remises par ligne et globale, prix de gros automatique, personnalisation des kits (retrait /
+  substitution, prix recalculé), client optionnel avec création rapide, points de fidélité convertis en
+  remise. Raccourcis : **F2** recherche, **F4** mise en attente, **F8** client, **F9** encaisser.
+- **Paiements multiples** : espèces (monnaie à rendre et billets proposés), Orange Money, MTN MoMo,
+  Moov Money, Wave (référence obligatoire), carte, crédit client, bon d'achat, avoir.
+- **Remise au-delà du plafond du rôle** : autorisation d'un responsable par PIN (en ligne ou hors ligne).
+- **Reçu imprimé à la validation** : ticket 58 / 80 mm ou facture A5 / A4 (logo, NCC, caissier, terminal,
+  lignes, remises, paiements, monnaie, QR code du numéro, pied de page), réimpression « DUPLICATA »
+  tracée, envoi du récapitulatif par WhatsApp. Couche `PrinterService` : impression navigateur ou
+  ESC/POS directe par **Web Serial** (Chrome / Edge) sur imprimante thermique.
+- **Numéro de reçu hors ligne** `C02-20261008-0047` (code terminal, date, séquence locale).
+- **Serveur** : toutes les ventes passent par la synchronisation ; il recalcule lignes, remises, totaux et
+  paiements et rejette toute incohérence ; un prix différent du catalogue est accepté s'il était en
+  vigueur à l'heure de la vente (historique des prix), sinon accepté mais signalé dans l'audit.
+- **Retours** partiels ou totaux depuis le numéro de reçu ou son QR code, remboursement en espèces ou avoir,
+  autorisation d'un responsable obligatoire, réintégration en stock (composants des kits compris).
+- **Caisse** : ouverture avec fond, entrées / sorties d'espèces justifiées, rapport X, clôture avec
+  comptage des billets et pièces FCFA, écart et **rapport Z** imprimable (calculé localement hors ligne,
+  recalculé par le serveur). Une seule caisse ouverte par terminal.
+- **Clients** : fiches (créées hors ligne possible, conflits « dernier écrit gagne »), relevé, crédit avec
+  plafond et règlements, avoirs, bons d'achat, fidélité.
+
+**Tester une vente** : Caisse › Ouverture / Clôture › Ouvrir, puis Caisse › Nouvelle vente, ajouter des
+articles, F9, payer. Hors ligne (DevTools › Offline), la vente est numérotée, imprimée et part dans la
+file ; elle arrive sur le serveur au retour du réseau.
 
 ### Ce que contient la phase 4 (mode hors connexion)
 

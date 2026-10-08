@@ -186,18 +186,21 @@ Les prix calculés sont arrondis selon `LibrarySettings.price_rounding` (5 FCFA 
 | `Voucher` (bon d'achat) | `code`, `amount`, `expires_at` | FK `customer` (nullable) |
 | `LoyaltyTransaction` | `points`, `reason` | FK `customer`, `sale` |
 
-### sales (phase 5)
+### sales (phase 5, livrée)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
-| `PaymentMethod` | `code` (CASH, ORANGE_MONEY, MTN_MOMO, MOOV_MONEY, WAVE, CARD, CREDIT, VOUCHER), `label`, `requires_reference`, `is_active` | — |
-| `CashRegisterSession` | `opened_at`, `opening_float`, `closed_at`, `counted_cash`, `expected_cash`, `variance`, `denominations` (JSON billets/pièces), `z_number` | FK `device`, `user`, `depot` |
+| `PaymentMethod` | `code` (CASH, ORANGE_MONEY, MTN_MOMO, MOOV_MONEY, WAVE, CARD, CREDIT, VOUCHER, CREDIT_NOTE), `label`, `kind`, `requires_reference`, `is_active`, `sort_order` | — |
+| `CashSession` | `status`, `opened_at`, `opening_float`, `closed_at`, `counted_cash`, `denominations`, `expected_cash`, `variance`, `z_number` | `device` (terminal), `depot`, `opened_by`, `closed_by` |
 | `CashMovement` | `kind` (IN, OUT), `amount`, `reason` | FK `session`, `user` |
-| `Sale` | `receipt_number` (`C02-20261008-0047`), `status` (HELD, COMPLETED, CANCELLED), `channel` (COUNTER, ONLINE), `subtotal`, `discount_total`, `vat_total`, `total`, `paid_total`, `change_due`, `reprint_count` | FK `customer`, `cashier`, `register_session`, `depot`, `order` (nullable) |
-| `SaleLine` | `quantity`, `unit_price`, `discount`, `line_total`, `price_kind` (RETAIL, WHOLESALE) | FK `sale`, `article` |
-| `SaleLineKitAdjustment` | `action` (REMOVED, SUBSTITUTED), `quantity`, `price_delta` | FK `sale_line`, `component`, `substitute` |
-| `Payment` | `amount`, `reference` | FK `sale`, `method` |
-| `SaleReturn` + `SaleReturnLine` | `number`, `refund_mode` (CASH, CREDIT_NOTE), `quantity`, `amount` | FK `sale`, `sale_line`, `authorized_by` |
-| `DiscountAuthorization` | `percent`, `reason` | FK `sale`, `requested_by`, `authorized_by` |
+| `Sale` | `receipt_number` (C02-AAAAMMJJ-0047), `status`, `channel`, `sold_at`, `subtotal`, `discount_total`, `total`, `paid_total`, `change_due`, `reprint_count`, `loyalty_points` | FK `customer`, `cashier`, `device`, `depot`, `cash_session`, `discount_authorized_by` |
+| `SaleLine` | `quantity`, `unit_price`, `price_kind`, `discount`, `line_total`, `unit_cost`, `kit_adjustments` | FK `sale`, `article` |
+| `Payment` | `amount`, `reference` | FK `sale`, `method`, `voucher`, `credit_note` |
+| `SaleReturn` + `SaleReturnLine` | `number`, `refund_mode` (CASH, CREDIT_NOTE), `total`, `reason`, `quantity`, `amount` | FK `sale`, `sale_line`, `user`, `authorized_by`, `cash_session`, `credit_note` |
+| `CreditNote` (avoir), `Voucher` (bon d'achat) | `number` / `code`, `amount`, `remaining`, `expires_at` | FK `customer` |
+| `CustomerAccountEntry` | `kind` (CREDIT_SALE, REPAYMENT), `amount` signé | FK `customer`, `sale`, `method`, `cash_session` |
+| `LoyaltyEntry` | `points` signés, `reason` | FK `customer`, `sale` |
+
+`customers.Customer` (phase 5) : `name`, `phone`, `email`, `address`, `credit_limit`, `is_active`, FK `school`, O2O `user`.
 
 ### orders (phase 7)
 | Modèle | Champs principaux | Relations |

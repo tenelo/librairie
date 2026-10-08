@@ -105,6 +105,39 @@ export class OfflineDataService {
     return [{ article: articleId, depot, quantity }];
   }
 
+  /**
+   * Quantité vendable d'un article (mêmes règles que `article_availability` côté serveur) :
+   * service = illimité (null), lot = stock de base ÷ unités, kit virtuel = composant obligatoire le plus limitant.
+   */
+  async availability(articleId: string, lookup: (id: string) => number): Promise<number | null> {
+    const article = await this.local.db.articles.get(articleId);
+    if (!article) {
+      return 0;
+    }
+    if (article['type'] === 'SERVICE') {
+      return null;
+    }
+    if (article['type'] === 'LOT') {
+      return Math.floor(Math.max(lookup(String(article['lot_base_article'])), 0) / Number(article['lot_units'] ?? 1));
+    }
+    if (article['type'] === 'KIT') {
+      const kit = await this.local.db.kits.where('article').equals(articleId).first();
+      if (kit && kit['stock_mode'] === 'VIRTUAL') {
+        const components = (await this.local.db.kit_components.where('kit').equals(kit.id).toArray())
+          .filter((c) => !c['is_optional']);
+        const limits: number[] = [];
+        for (const component of components) {
+          const available = await this.availability(String(component['article']), lookup);
+          if (available !== null) {
+            limits.push(Math.floor(available / Number(component['quantity'])));
+          }
+        }
+        return limits.length ? Math.min(...limits) : 0;
+      }
+    }
+    return Math.max(lookup(articleId), 0);
+  }
+
   async table(name: 'depots' | 'suppliers' | 'purchase_orders'): Promise<SyncedRow[]> {
     return this.local.db[name].toArray();
   }

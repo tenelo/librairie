@@ -44,7 +44,10 @@
               "includePaths": [
                 "projects/shared/src/styles"
               ]
-            }
+            },
+            "allowedCommonJsDependencies": [
+              "qrcode"
+            ]
           },
           "configurations": {
             "production": {
@@ -160,7 +163,10 @@
               "includePaths": [
                 "projects/shared/src/styles"
               ]
-            }
+            },
+            "allowedCommonJsDependencies": [
+              "qrcode"
+            ]
           },
           "configurations": {
             "production": {
