@@ -1,0 +1,225 @@
+<header class="page-header">
+  <div>
+    <a mat-button routerLink="/catalogue/kits"><mat-icon>arrow_back</mat-icon> Kits scolaires</a>
+    <h1>{{ isNew() ? 'Nouveau kit' : (kit()?.name ?? 'Kit') }}</h1>
+  </div>
+  @if (!isNew() && canManage) {
+    <button mat-stroked-button type="button" (click)="remove()" [disabled]="!network.online()">
+      <mat-icon>delete</mat-icon> Supprimer
+    </button>
+  }
+</header>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<form [formGroup]="form" (ngSubmit)="save()">
+  <mat-card appearance="outlined">
+    <mat-card-header><mat-card-title>Kit</mat-card-title></mat-card-header>
+    <mat-card-content class="form-grid">
+      <mat-form-field class="wide">
+        <mat-label>Nom du kit</mat-label>
+        <input matInput formControlName="name" placeholder="Kit 6ème — Lycée Moderne de Cocody" />
+        @if (form.controls.name.hasError('required')) {
+          <mat-error>Le nom est obligatoire.</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Code interne</mat-label>
+        <input matInput formControlName="code" placeholder="Généré automatiquement" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Niveau</mat-label>
+        <mat-select formControlName="level">
+          @for (l of levels(); track l.id) {
+            <mat-option [value]="l.id">{{ l.label }}</mat-option>
+          }
+        </mat-select>
+        @if (form.controls.level.hasError('required')) {
+          <mat-error>Choisissez un niveau.</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Établissement</mat-label>
+        <mat-select formControlName="school">
+          <mat-option [value]="null">Liste générique (tous établissements)</mat-option>
+          @for (s of schools(); track s.id) {
+            <mat-option [value]="s.id">{{ s.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Année scolaire</mat-label>
+        <mat-select formControlName="school_year">
+          <mat-option [value]="null">—</mat-option>
+          @for (y of years(); track y.id) {
+            <mat-option [value]="y.id">{{ y.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Catégorie</mat-label>
+        <mat-select formControlName="category">
+          <mat-option [value]="null">Aucune</mat-option>
+          @for (c of categories(); track c.id) {
+            <mat-option [value]="c.id">{{ c.path }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <div class="wide">
+        <p><strong>Gestion du stock</strong></p>
+        <mat-button-toggle-group formControlName="stock_mode" aria-label="Gestion du stock">
+          <mat-button-toggle value="VIRTUAL">Kit virtuel</mat-button-toggle>
+          <mat-button-toggle value="ASSEMBLED">Kit pré-assemblé</mat-button-toggle>
+        </mat-button-toggle-group>
+        <p class="muted">
+          @if (form.controls.stock_mode.value === 'VIRTUAL') {
+            À la vente, le stock est déduit de chaque composant ; la disponibilité est celle du composant le plus limitant.
+          } @else {
+            Le kit a son propre stock, alimenté par l'assemblage (menu Stock › Assemblage de kits).
+          }
+        </p>
+      </div>
+      <mat-slide-toggle formControlName="is_active">Actif</mat-slide-toggle>
+      <mat-slide-toggle formControlName="is_online">Proposé en boutique en ligne</mat-slide-toggle>
+      <mat-form-field class="wide">
+        <mat-label>Remarques</mat-label>
+        <textarea matInput rows="2" formControlName="notes"></textarea>
+      </mat-form-field>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>Composition ({{ rows().length }} articles)</mat-card-title>
+      <mat-card-subtitle>
+        Les articles facultatifs peuvent être retirés à la vente ; les équivalents sont proposés en substitution.
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      @if (canManage) {
+        <bo-article-picker (picked)="addComponent($event)" />
+      }
+      <div class="table-wrapper">
+        <table class="components">
+          <thead>
+            <tr>
+              <th>Article</th>
+              <th class="qty">Quantité</th>
+              <th class="num">Prix unitaire</th>
+              <th class="num">Total</th>
+              <th>Facultatif</th>
+              <th>Équivalents</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.article; let first = $first; let last = $last) {
+              <tr>
+                <td><code>{{ row.code }}</code> {{ row.name }}</td>
+                <td class="qty">
+                  <input class="qty-input" type="number" min="1" [value]="row.quantity" [disabled]="!canManage"
+                         (change)="setQuantity(row, $any($event.target).value)" [attr.aria-label]="'Quantité de ' + row.name" />
+                </td>
+                <td class="num">{{ row.unitPrice | fcfa }}</td>
+                <td class="num">{{ row.unitPrice * row.quantity | fcfa }}</td>
+                <td>
+                  <mat-checkbox [checked]="row.optional" [disabled]="!canManage"
+                                (change)="setOptional(row, $event.checked)" [aria-label]="'Facultatif : ' + row.name" />
+                </td>
+                <td>
+                  <div class="substitutes">
+                    @for (s of row.substitutes; track s.id) {
+                      <mat-chip [removable]="canManage" (removed)="removeSubstitute(row, s.id)">
+                        {{ s.name }}
+                        @if (canManage) {
+                          <button matChipRemove [attr.aria-label]="'Retirer ' + s.name"><mat-icon>cancel</mat-icon></button>
+                        }
+                      </mat-chip>
+                    }
+                    @if (canManage) {
+                      <button mat-icon-button type="button" matTooltip="Ajouter un équivalent"
+                              (click)="editingSubstitutes.set(editingSubstitutes() === row.article ? null : row.article)">
+                        <mat-icon>swap_horiz</mat-icon>
+                      </button>
+                    }
+                  </div>
+                  @if (editingSubstitutes() === row.article) {
+                    <bo-article-picker label="Équivalent autorisé" (picked)="addSubstitute(row, $event)" />
+                  }
+                </td>
+                <td class="num">
+                  @if (canManage) {
+                    <button mat-icon-button type="button" (click)="move(row, -1)" [disabled]="first" aria-label="Monter">
+                      <mat-icon>arrow_upward</mat-icon>
+                    </button>
+                    <button mat-icon-button type="button" (click)="move(row, 1)" [disabled]="last" aria-label="Descendre">
+                      <mat-icon>arrow_downward</mat-icon>
+                    </button>
+                    <button mat-icon-button type="button" (click)="removeComponent(row)" aria-label="Retirer du kit">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="empty">Aucun article : recherchez ou scannez un article ci-dessus.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card appearance="outlined">
+    <mat-card-header><mat-card-title>Prix du kit</mat-card-title></mat-card-header>
+    <mat-card-content>
+      @if (canManage && !canEditPrices()) {
+        <p class="offline-note">
+          <mat-icon inline>lock</mat-icon>
+          {{ network.online() ? 'La modification des prix est réservée aux rôles autorisés.' : 'Hors ligne : les prix ne sont modifiables qu’en ligne.' }}
+        </p>
+      }
+      <div class="form-grid">
+        <mat-button-toggle-group formControlName="pricing_mode" aria-label="Mode de prix">
+          <mat-button-toggle value="COMPUTED">Calculé (composants − remise)</mat-button-toggle>
+          <mat-button-toggle value="FIXED">Fixé manuellement</mat-button-toggle>
+        </mat-button-toggle-group>
+        <mat-form-field>
+          <mat-label>Remise kit (%)</mat-label>
+          <input matInput type="number" min="0" max="100" step="0.5" formControlName="discount_percent" />
+        </mat-form-field>
+        @if (form.controls.pricing_mode.value === 'FIXED') {
+          <mat-form-field>
+            <mat-label>Prix de vente du kit</mat-label>
+            <input matInput type="number" min="0" formControlName="retail_price" />
+          </mat-form-field>
+        }
+      </div>
+      <div class="pricing">
+        <div><small>Total des composants</small><strong>{{ pricing().componentsTotal | fcfa }}</strong></div>
+        <div><small>Prix calculé (arrondi {{ rounding() }} FCFA)</small><strong>{{ pricing().computedPrice | fcfa }}</strong></div>
+        <div><small>Prix de vente</small><strong>{{ pricing().price | fcfa }}</strong></div>
+        <div><small>Coût (CMP)</small><strong>{{ pricing().cost | fcfa }}</strong></div>
+        <div>
+          <small>Marge</small>
+          <strong [class.negative]="pricing().margin < 0">
+            {{ pricing().margin | fcfa }}
+            @if (pricing().marginRate !== null) { <small>({{ pricing().marginRate | number: '1.1-1' }} %)</small> }
+          </strong>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  @if (canManage) {
+    <div class="actions">
+      <a mat-button routerLink="/catalogue/kits">Annuler</a>
+      <button mat-flat-button type="submit" [disabled]="saving() || !network.online()"
+              [matTooltip]="network.online() ? '' : 'Les kits se modifient en ligne'">
+        Enregistrer
+      </button>
+    </div>
+  }
+</form>

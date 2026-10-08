@@ -16,7 +16,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | Phase | Contenu | État |
 |---|---|---|
 | 1 | Socle : dépôt, Docker, settings, `SyncModel`, comptes, rôles, JWT, workspace Angular, PWA, layout, menus, authentification | **Livrée** |
-| 2 | Catalogue et kits | À venir |
+| 2 | Catalogue et kits : articles, codes-barres, kits virtuels et pré-assemblés, import/export Excel, étiquettes | **Livrée** |
 | 3 | Stock et achats | À venir |
 | 4 | Couche hors connexion (Dexie, outbox, sync) | À venir |
 | 5 | Ventes et caisse | À venir |
@@ -29,6 +29,27 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 
 Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
 de livraison.
+
+### Ce que contient la phase 2
+
+- **Articles** simples, lots (conditionnements convertis en unités) et services : catégories arborescentes,
+  marques, unités, prix détail / gros avec seuil, TVA paramétrable, seuils de stock, photos, visibilité
+  boutique. Le code interne est attribué automatiquement.
+- **Codes-barres** : plusieurs par article ; EAN-13 fabricant contrôlé (clé), code interne EAN-13
+  (préfixe magasin « 20 ») généré à la création ; recherche directe par douchette ; impression
+  d'étiquettes (planche A4 de 24 ou rouleau 50 × 30 mm) dessinées en SVG, donc imprimables hors ligne.
+- **Prix** modifiables uniquement en ligne et avec la permission « Modifier les prix » ; chaque changement
+  est historisé (fiche article) et inscrit au journal d'audit. Le CMP n'est saisi qu'à la création.
+- **Kits scolaires** par niveau (CP1 à Terminale, séries A/C/D), établissement et année scolaire :
+  composition avec articles facultatifs et équivalents autorisés, prix fixe ou calculé (somme des
+  composants moins la remise, arrondi à 5 FCFA, réglable dans les paramètres) avec marge affichée,
+  duplication vers un autre niveau/établissement/année. Mode « virtuel » (disponibilité = composant le
+  plus limitant) ou « pré-assemblé » (stock propre ; l'assemblage arrive avec la phase stock).
+  Le calcul des retraits et substitutions à la vente existe côté serveur et en TypeScript (pour la caisse
+  hors ligne), avec les mêmes résultats.
+- **Import / export Excel** des articles et des listes de fournitures, avec simulation obligatoire avant
+  application, rapport d'erreurs par ligne et modèles vierges.
+- Référentiels : niveaux, années scolaires et établissements (aussi accessibles depuis Clients).
 
 ### Ce que contient la phase 1
 

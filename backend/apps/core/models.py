@@ -27,19 +27,25 @@ class SyncCounter(models.Model):
 GLOBAL_COUNTER = "global"
 
 
-def next_sync_version() -> int:
-    """Réserve atomiquement la prochaine version de synchronisation.
+def next_counter(name: str) -> int:
+    """Réserve atomiquement la valeur suivante d'un compteur nommé.
 
     L'incrément se fait par une requête UPDATE ... SET value = value + 1 qui pose un
-    verrou de ligne : deux écritures concurrentes obtiennent toujours deux versions
-    distinctes et croissantes.
+    verrou de ligne : deux écritures concurrentes obtiennent toujours deux valeurs
+    distinctes et croissantes. Sert aux versions de synchronisation, aux codes articles
+    et aux codes-barres internes.
     """
     with transaction.atomic():
-        updated = SyncCounter.objects.filter(name=GLOBAL_COUNTER).update(value=F("value") + 1)
+        updated = SyncCounter.objects.filter(name=name).update(value=F("value") + 1)
         if not updated:
-            SyncCounter.objects.get_or_create(name=GLOBAL_COUNTER, defaults={"value": 0})
-            SyncCounter.objects.filter(name=GLOBAL_COUNTER).update(value=F("value") + 1)
-        return SyncCounter.objects.get(name=GLOBAL_COUNTER).value
+            SyncCounter.objects.get_or_create(name=name, defaults={"value": 0})
+            SyncCounter.objects.filter(name=name).update(value=F("value") + 1)
+        return SyncCounter.objects.get(name=name).value
+
+
+def next_sync_version() -> int:
+    """Réserve la prochaine version de synchronisation (compteur global)."""
+    return next_counter(GLOBAL_COUNTER)
 
 
 def current_sync_version() -> int:

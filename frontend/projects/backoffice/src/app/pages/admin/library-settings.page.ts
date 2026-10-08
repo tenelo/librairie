@@ -5,6 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LibrarySettings, apiErrorMessage } from '@librairie/shared';
@@ -22,6 +23,7 @@ import { AdminApiService } from '../../services/admin-api.service';
     MatSlideToggleModule,
     MatButtonModule,
     MatProgressBarModule,
+    MatSelectModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -77,6 +79,14 @@ import { AdminApiService } from '../../services/admin-api.service';
           <mat-form-field>
             <mat-label>Intervalle de synchronisation (min)</mat-label>
             <input matInput formControlName="sync_interval_minutes" type="number" min="1" max="120" />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Arrondi des prix calculés (kits)</mat-label>
+            <mat-select formControlName="price_rounding">
+              @for (step of roundingSteps; track step) {
+                <mat-option [value]="step">{{ step }} FCFA</mat-option>
+              }
+            </mat-select>
           </mat-form-field>
           <mat-form-field>
             <mat-label>Points de fidélité / 1 000 FCFA</mat-label>
@@ -136,7 +146,9 @@ export class LibrarySettingsPage {
     order_expiry_hours: [72, [Validators.required, Validators.min(1)]],
     sync_interval_minutes: [5, [Validators.required, Validators.min(1), Validators.max(120)]],
     loyalty_points_per_1000: [1, [Validators.required, Validators.min(0)]],
+    price_rounding: [5, Validators.required],
   });
+  protected readonly roundingSteps = [1, 5, 10, 25, 50, 100];
 
   constructor() {
     this.api.getSettings().subscribe({
@@ -175,6 +187,7 @@ export class LibrarySettingsPage {
       order_expiry_hours: settings.order_expiry_hours,
       sync_interval_minutes: settings.sync_interval_minutes,
       loyalty_points_per_1000: settings.loyalty_points_per_1000,
+      price_rounding: settings.price_rounding,
     });
     this.loading.set(false);
   }

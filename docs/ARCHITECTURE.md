@@ -127,21 +127,24 @@ librairie/
 |---|---|---|
 | `AuditLog` | `action` (CREATE, UPDATE, DELETE, LOGIN, LOGIN_FAILED, LOGOUT, PIN_UNLOCK, DISCOUNT_OVERRIDE, REFUND, REPRINT, DRAWER_OPEN, PRICE_CHANGE, INVENTORY_VALIDATE, SYNC_CONFLICT…), `entity`, `entity_id`, `old_values` (JSON), `new_values` (JSON), `ip_address`, `server_timestamp`, `client_timestamp`, `origin` (ONLINE, SYNC) | FK `user`, `device` ; `role_code` copié |
 
-### catalog (phase 2)
+### catalog (phase 2, livrée)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
-| `Category` | `name`, `slug`, `sort_order` | FK `parent` → Category (arborescence) |
+| `Category` | `name`, `sort_order`, `is_active` | FK `parent` → Category (arborescence) |
 | `Brand` | `name` | — |
 | `Unit` | `code`, `label` | — |
-| `Article` | `code`, `name`, `description`, `type` (SIMPLE, KIT, LOT, SERVICE), `avg_cost` (CMP), `retail_price`, `wholesale_price`, `wholesale_min_qty`, `vat_rate`, `alert_threshold`, `max_stock`, `is_active`, `is_online` | FK `category`, `brand`, `unit` |
+| `Article` | `code` (auto `ART-00001`, `KIT-…`, `LOT-…`, `SRV-…`), `name`, `description`, `type` (SIMPLE, KIT, LOT, SERVICE), `avg_cost` (CMP), `retail_price`, `wholesale_price`, `wholesale_min_qty`, `vat_rate`, `vat_exempt`, `alert_threshold`, `max_stock`, `is_active`, `is_online`, `lot_units` | FK `category`, `brand`, `unit` ; FK `lot_base_article` → Article (type LOT) |
 | `ArticleImage` | `image`, `sort_order` | FK `article` |
-| `Barcode` | `code`, `kind` (EAN13, INTERNAL) | FK `article` |
-| `LotDefinition` | `units_per_lot` | FK `article` (le LOT), FK `base_article` (le SIMPLE) |
-| `SchoolLevel` | `code` (CP1…Terminale), `label`, `series` (A/C/D), `sort_order` | — |
-| `SchoolYear` | `label` (2026-2027), `starts_on`, `ends_on`, `is_current` | — |
-| `KitDefinition` | `pricing_mode` (FIXED, COMPUTED), `discount_percent`, `stock_mode` (VIRTUAL, ASSEMBLED) | O2O `article` (type KIT), FK `level`, `school` (nullable), `school_year` |
-| `KitComponent` | `quantity`, `is_optional`, `sort_order` | FK `kit`, FK `article` ; M2M `substitutes` → Article |
-| `PriceHistory` | `field`, `old_value`, `new_value` | FK `article`, `changed_by` |
+| `Barcode` | `code` (unique parmi les codes actifs), `kind` (EAN13, INTERNAL = EAN-13 préfixe 20, OTHER) | FK `article` |
+| `SchoolLevel` | `code` (CP1…TLE-D), `label`, `cycle`, `series`, `sort_order`, `is_active` | — |
+| `SchoolYear` | `label` (2026-2027), `starts_on`, `ends_on`, `is_current` (une seule) | — |
+| `Kit` | `pricing_mode` (FIXED, COMPUTED), `discount_percent`, `stock_mode` (VIRTUAL, ASSEMBLED), `notes` | O2O `article` (type KIT, porte code, nom et prix), FK `level`, `school` (nullable), `school_year` |
+| `KitComponent` | `quantity`, `is_optional`, `sort_order` | FK `kit`, `article` ; M2M `substitutes` → Article |
+| `PriceHistory` | `field`, `old_value`, `new_value`, `reason` | FK `article`, `changed_by` |
+
+Écarts avec le schéma initial : le conditionnement d'un lot est porté directement par `Article`
+(`lot_base_article`, `lot_units`) au lieu d'un modèle `LotDefinition`, et `KitDefinition` s'appelle `Kit`.
+Les prix calculés sont arrondis selon `LibrarySettings.price_rounding` (5 FCFA par défaut).
 
 ### stock (phase 3)
 | Modèle | Champs principaux | Relations |
@@ -171,7 +174,7 @@ librairie/
 | `InventoryCount` | `quantity`, `count_round` (1 ou 2), `counted_at` | FK `session`, `article`, `location`, `user`, `device` |
 | `InventoryVariance` | `theoretical`, `sales_during`, `counted`, `variance`, `value` | FK `session`, `article` |
 
-### customers (phases 5 et 7)
+### customers (`School` livré en phase 2, le reste en phases 5 et 7)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
 | `School` | `name`, `city`, `phone` | — |

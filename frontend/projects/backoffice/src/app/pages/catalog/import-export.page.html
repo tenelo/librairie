@@ -1,0 +1,61 @@
+<h1>Import / Export</h1>
+@if (!network.online()) {
+  <p class="offline-note"><mat-icon inline>cloud_off</mat-icon> L'import et l'export Excel nécessitent une connexion.</p>
+}
+
+<div class="grid">
+  @for (kind of kinds; track kind) {
+    @let s = state()[kind];
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>{{ kind === 'articles' ? 'Articles' : 'Listes de fournitures (kits)' }}</mat-card-title>
+        <mat-card-subtitle>
+          @if (kind === 'articles') {
+            Création ou mise à jour par code interne ; catégories (« Parent > Enfant ») et marques créées au besoin.
+          } @else {
+            Une ligne par article ; les lignes d'un même kit sont regroupées et remplacent sa composition.
+          }
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="buttons">
+          <button mat-stroked-button type="button" (click)="export(kind)" [disabled]="exporting() || !network.online()">
+            <mat-icon>download</mat-icon> Exporter
+          </button>
+          <button mat-stroked-button type="button" (click)="template(kind)" [disabled]="!network.online()">
+            <mat-icon>description</mat-icon> Modèle vierge
+          </button>
+          <input #file type="file" accept=".xlsx" hidden (change)="choose(kind, $event)" />
+          <button mat-flat-button type="button" (click)="file.click()" [disabled]="s.busy || !network.online()">
+            <mat-icon>upload_file</mat-icon> Importer un fichier
+          </button>
+        </div>
+        @if (s.busy) {
+          <mat-progress-bar mode="indeterminate" />
+        }
+        @if (s.result; as r) {
+          <div class="report" [class.ok]="!r.errors.length">
+            @if (r.applied) {
+              <strong>Import appliqué :</strong> {{ r.created }} création(s), {{ r.updated }} mise(s) à jour.
+            } @else if (r.errors.length) {
+              <strong>{{ r.errors.length }} erreur(s) : rien n'a été enregistré.</strong> Corrigez le fichier puis réimportez-le.
+              <ul class="errors">
+                @for (e of r.errors; track $index) {
+                  <li>Ligne {{ e.row }} : {{ e.message }}</li>
+                }
+              </ul>
+            } @else {
+              <strong>Simulation réussie ({{ s.file?.name }}) :</strong> {{ r.created }} création(s),
+              {{ r.updated }} mise(s) à jour.
+              <div class="buttons">
+                <button mat-flat-button type="button" (click)="run(kind, false)" [disabled]="s.busy">
+                  Appliquer l'import
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

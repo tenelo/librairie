@@ -1,0 +1,268 @@
+<header class="page-header">
+  <div>
+    <a mat-button routerLink="/catalogue/articles"><mat-icon>arrow_back</mat-icon> Articles</a>
+    <h1>{{ isNew() ? 'Nouvel article' : (article()?.name ?? 'Article') }}</h1>
+  </div>
+  @if (!isNew() && canManage) {
+    <button mat-stroked-button type="button" color="warn" (click)="remove()" [disabled]="!network.online()">
+      <mat-icon>delete</mat-icon> Supprimer
+    </button>
+  }
+</header>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+@if (canManage && !canEditPrices()) {
+  <p class="offline-note">
+    <mat-icon inline>lock</mat-icon>
+    @if (!network.online()) {
+      Hors ligne : les prix ne sont modifiables qu'en ligne.
+    } @else {
+      La modification des prix est réservée aux rôles autorisés.
+    }
+  </p>
+}
+
+<form [formGroup]="form" (ngSubmit)="save()">
+  <mat-card appearance="outlined">
+    <mat-card-header><mat-card-title>Identification</mat-card-title></mat-card-header>
+    <mat-card-content class="form-grid">
+      <mat-form-field>
+        <mat-label>Code interne</mat-label>
+        <input matInput formControlName="code" placeholder="Généré automatiquement" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Type</mat-label>
+        <mat-select formControlName="type">
+          @for (t of types; track t) {
+            <mat-option [value]="t">{{ typeLabels[t] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field class="wide">
+        <mat-label>Désignation</mat-label>
+        <input matInput formControlName="name" />
+        @if (form.controls.name.hasError('required')) {
+          <mat-error>La désignation est obligatoire.</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field class="wide">
+        <mat-label>Description</mat-label>
+        <textarea matInput rows="2" formControlName="description"></textarea>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Catégorie</mat-label>
+        <mat-select formControlName="category">
+          <mat-option [value]="null">Aucune</mat-option>
+          @for (c of categories(); track c.id) {
+            <mat-option [value]="c.id">{{ c.path }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Marque</mat-label>
+        <mat-select formControlName="brand">
+          <mat-option [value]="null">Aucune</mat-option>
+          @for (b of brands(); track b.id) {
+            <mat-option [value]="b.id">{{ b.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (canManage) {
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Nouvelle marque</mat-label>
+          <input matInput #brandName (keydown.enter)="$event.preventDefault(); addBrand(brandName.value); brandName.value = ''" />
+          <button mat-icon-button matSuffix type="button" (click)="addBrand(brandName.value); brandName.value = ''"
+                  aria-label="Ajouter la marque"><mat-icon>add</mat-icon></button>
+        </mat-form-field>
+      }
+      <mat-form-field>
+        <mat-label>Unité</mat-label>
+        <mat-select formControlName="unit">
+          <mat-option [value]="null">—</mat-option>
+          @for (u of units(); track u.id) {
+            <mat-option [value]="u.id">{{ u.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </mat-card-content>
+  </mat-card>
+
+  @if (form.controls.type.value === 'LOT') {
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Conditionnement</mat-card-title>
+        <mat-card-subtitle>Un lot contient plusieurs unités d'un article simple (ex. paquet de 10 stylos).</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content class="form-grid">
+        <div>
+          @if (lotBase(); as base) {
+            <p>Article contenu : <strong>{{ base.name }}</strong></p>
+          }
+          @if (canManage) {
+            <bo-article-picker label="Article contenu" (picked)="setLotBase($event)" />
+          }
+        </div>
+        <mat-form-field>
+          <mat-label>Unités par lot</mat-label>
+          <input matInput type="number" min="2" formControlName="lot_units" />
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <mat-card appearance="outlined">
+    <mat-card-header><mat-card-title>Prix (FCFA)</mat-card-title></mat-card-header>
+    <mat-card-content>
+      <div class="form-grid">
+        <mat-form-field>
+          <mat-label>Prix d'achat moyen (CMP)</mat-label>
+          <input matInput type="number" min="0" formControlName="avg_cost" />
+          <mat-hint>{{ isNew() ? 'Coût initial' : 'Recalculé à chaque réception' }}</mat-hint>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Prix de vente détail</mat-label>
+          <input matInput type="number" min="0" formControlName="retail_price" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Prix de vente gros</mat-label>
+          <input matInput type="number" min="0" formControlName="wholesale_price" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>À partir de (quantité)</mat-label>
+          <input matInput type="number" min="2" formControlName="wholesale_min_qty" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>TVA (%)</mat-label>
+          <input matInput type="number" min="0" max="100" step="0.01" formControlName="vat_rate"
+                 placeholder="Taux par défaut" />
+        </mat-form-field>
+        <mat-slide-toggle formControlName="vat_exempt">Exonéré de TVA</mat-slide-toggle>
+      </div>
+      <p class="summary">
+        <span>Marge unitaire : <strong>{{ margin() | fcfa }}</strong></span>
+      </p>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card appearance="outlined">
+    <mat-card-header><mat-card-title>Stock et diffusion</mat-card-title></mat-card-header>
+    <mat-card-content class="form-grid">
+      <mat-form-field>
+        <mat-label>Seuil d'alerte</mat-label>
+        <input matInput type="number" min="0" formControlName="alert_threshold" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Stock maximum</mat-label>
+        <input matInput type="number" min="0" formControlName="max_stock" />
+      </mat-form-field>
+      <mat-slide-toggle formControlName="is_active">Actif</mat-slide-toggle>
+      <mat-slide-toggle formControlName="is_online">Visible en boutique en ligne</mat-slide-toggle>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>Codes-barres</mat-card-title>
+      <mat-card-subtitle>
+        EAN-13 du fabricant, ou code interne imprimable généré automatiquement à la création.
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="barcodes">
+        @for (barcode of barcodes(); track barcode.code) {
+          <div class="barcode">
+            <lib-barcode-svg [code]="barcode.code" />
+            <small>{{ barcode.kind === 'INTERNAL' ? 'Interne' : barcode.kind === 'EAN13' ? 'Fabricant' : 'Autre' }}</small>
+            @if (canManage) {
+              <button mat-button type="button" (click)="removeBarcode(barcode.code)">Retirer</button>
+            }
+          </div>
+        } @empty {
+          <p class="muted">
+            {{ isNew() ? 'Un code interne sera généré à l’enregistrement si vous n’en saisissez pas.' : 'Aucun code-barres.' }}
+          </p>
+        }
+      </div>
+      @if (canManage) {
+        <div class="barcode-add">
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>Scanner ou saisir un code</mat-label>
+            <input matInput [value]="newBarcode()" (input)="newBarcode.set($any($event.target).value)"
+                   (keydown.enter)="$event.preventDefault(); addBarcode()" />
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="addBarcode()">Ajouter</button>
+          @if (!isNew()) {
+            <button mat-stroked-button type="button" (click)="generateBarcode()" [disabled]="!network.online()">
+              <mat-icon>auto_awesome</mat-icon> Générer un code interne
+            </button>
+          }
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  @if (!isNew()) {
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>Photos</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <div class="images">
+          @for (image of article()?.images ?? []; track image.id) {
+            <div class="image">
+              <img [src]="image.image" alt="Photo de l'article" />
+              @if (canManage) {
+                <button mat-icon-button type="button" (click)="deleteImage(image.id)" aria-label="Supprimer la photo">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+          } @empty {
+            <p class="muted">Aucune photo.</p>
+          }
+        </div>
+        @if (canManage) {
+          <input #file type="file" accept="image/*" hidden (change)="uploadImage($event)" />
+          <button mat-stroked-button type="button" (click)="file.click()" [disabled]="!network.online()">
+            <mat-icon>add_photo_alternate</mat-icon> Ajouter une photo
+          </button>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    @if (history().length) {
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>Historique des prix</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <table class="history">
+            <thead>
+              <tr><th>Date</th><th>Champ</th><th>Avant</th><th>Après</th><th>Par</th><th>Motif</th></tr>
+            </thead>
+            <tbody>
+              @for (entry of history(); track entry.id) {
+                <tr>
+                  <td>{{ entry.changed_at | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td>{{ priceLabels[entry.field] || entry.field }}</td>
+                  <td>{{ entry.old_value || '—' }}</td>
+                  <td>{{ entry.new_value || '—' }}</td>
+                  <td>{{ entry.changed_by_name ?? '—' }}</td>
+                  <td>{{ entry.reason }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  @if (canManage) {
+    <div class="actions">
+      <a mat-button routerLink="/catalogue/articles">Annuler</a>
+      <button mat-flat-button type="submit" [disabled]="saving() || !network.online()"
+              [matTooltip]="network.online() ? '' : 'Les fiches articles se modifient en ligne'">
+        Enregistrer
+      </button>
+    </div>
+  }
+</form>

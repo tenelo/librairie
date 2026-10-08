@@ -42,6 +42,12 @@ class LibrarySettings(SyncModel):
         "intervalle de synchronisation (min)", default=5, validators=[MinValueValidator(1), MaxValueValidator(120)]
     )
     loyalty_points_per_1000 = models.PositiveIntegerField("points de fidélité par tranche de 1 000 FCFA", default=1)
+    price_rounding = models.PositiveIntegerField(
+        "arrondi des prix calculés (FCFA)",
+        default=5,
+        choices=[(1, "1 FCFA"), (5, "5 FCFA"), (10, "10 FCFA"), (25, "25 FCFA"), (50, "50 FCFA"), (100, "100 FCFA")],
+        help_text="Les prix calculés (kits, substitutions) sont arrondis à ce multiple.",
+    )
 
     class Meta:
         verbose_name = "paramètres de la librairie"

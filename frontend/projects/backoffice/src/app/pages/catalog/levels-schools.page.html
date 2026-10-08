@@ -1,0 +1,148 @@
+<h1>Niveaux &amp; établissements</h1>
+
+<mat-tab-group [selectedIndex]="selectedTab()" (selectedIndexChange)="selectedTab.set($event)" animationDuration="0ms">
+  <mat-tab label="Niveaux scolaires">
+    <div class="tab">
+      @if (canManage) {
+        <mat-card appearance="outlined">
+          <mat-card-header><mat-card-title>Ajouter un niveau ou une série</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <form [formGroup]="levelForm" (ngSubmit)="addLevel()" class="form-grid">
+              <mat-form-field><mat-label>Code</mat-label><input matInput formControlName="code" placeholder="2NDE-D" /></mat-form-field>
+              <mat-form-field><mat-label>Libellé</mat-label><input matInput formControlName="label" placeholder="2nde D" /></mat-form-field>
+              <mat-form-field>
+                <mat-label>Cycle</mat-label>
+                <mat-select formControlName="cycle">
+                  @for (c of cycles; track c.value) {
+                    <mat-option [value]="c.value">{{ c.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field><mat-label>Série</mat-label><input matInput formControlName="series" maxlength="5" /></mat-form-field>
+              <mat-form-field><mat-label>Ordre d'affichage</mat-label><input matInput type="number" formControlName="sort_order" /></mat-form-field>
+              <button mat-flat-button type="submit" [disabled]="levelForm.invalid || !network.online()">Ajouter</button>
+            </form>
+          </mat-card-content>
+        </mat-card>
+      }
+      <table mat-table [dataSource]="levels()">
+        <ng-container matColumnDef="code">
+          <th mat-header-cell *matHeaderCellDef>Code</th>
+          <td mat-cell *matCellDef="let l"><code>{{ l.code }}</code></td>
+        </ng-container>
+        <ng-container matColumnDef="label">
+          <th mat-header-cell *matHeaderCellDef>Niveau</th>
+          <td mat-cell *matCellDef="let l">{{ l.label }}</td>
+        </ng-container>
+        <ng-container matColumnDef="cycle">
+          <th mat-header-cell *matHeaderCellDef>Cycle</th>
+          <td mat-cell *matCellDef="let l">{{ l.cycle_label }}</td>
+        </ng-container>
+        <ng-container matColumnDef="active">
+          <th mat-header-cell *matHeaderCellDef>Actif</th>
+          <td mat-cell *matCellDef="let l">
+            <mat-slide-toggle [checked]="l.is_active" [disabled]="!canManage" (change)="toggleLevel(l)"
+                              [aria-label]="'Activer ' + l.label" />
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="['code', 'label', 'cycle', 'active']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['code', 'label', 'cycle', 'active']" [class.inactive]="!row.is_active"></tr>
+      </table>
+    </div>
+  </mat-tab>
+
+  <mat-tab label="Années scolaires">
+    <div class="tab">
+      @if (canManage) {
+        <mat-card appearance="outlined">
+          <mat-card-header><mat-card-title>Nouvelle année scolaire</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <form [formGroup]="yearForm" (ngSubmit)="addYear()" class="form-grid">
+              <mat-form-field><mat-label>Année</mat-label><input matInput formControlName="label" placeholder="2027-2028" /></mat-form-field>
+              <mat-form-field><mat-label>Début</mat-label><input matInput type="date" formControlName="starts_on" /></mat-form-field>
+              <mat-form-field><mat-label>Fin</mat-label><input matInput type="date" formControlName="ends_on" /></mat-form-field>
+              <mat-slide-toggle formControlName="is_current">Année en cours</mat-slide-toggle>
+              <button mat-flat-button type="submit" [disabled]="yearForm.invalid || !network.online()">Ajouter</button>
+            </form>
+          </mat-card-content>
+        </mat-card>
+      }
+      <table mat-table [dataSource]="years()">
+        <ng-container matColumnDef="label">
+          <th mat-header-cell *matHeaderCellDef>Année</th>
+          <td mat-cell *matCellDef="let y"><strong>{{ y.label }}</strong></td>
+        </ng-container>
+        <ng-container matColumnDef="dates">
+          <th mat-header-cell *matHeaderCellDef>Période</th>
+          <td mat-cell *matCellDef="let y">{{ y.starts_on }} → {{ y.ends_on }}</td>
+        </ng-container>
+        <ng-container matColumnDef="current">
+          <th mat-header-cell *matHeaderCellDef>En cours</th>
+          <td mat-cell *matCellDef="let y">
+            @if (y.is_current) {
+              <mat-icon>check_circle</mat-icon>
+            } @else if (canManage) {
+              <button mat-button type="button" (click)="makeCurrent(y)">Définir comme année en cours</button>
+            }
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="['label', 'dates', 'current']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['label', 'dates', 'current']"></tr>
+      </table>
+    </div>
+  </mat-tab>
+
+  <mat-tab label="Établissements scolaires">
+    <div class="tab">
+      @if (canManage) {
+        <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>{{ editingSchool() ? 'Modifier l’établissement' : 'Nouvel établissement' }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <form [formGroup]="schoolForm" (ngSubmit)="saveSchool()" class="form-grid">
+              <mat-form-field class="wide"><mat-label>Nom</mat-label><input matInput formControlName="name" /></mat-form-field>
+              <mat-form-field><mat-label>Ville</mat-label><input matInput formControlName="city" /></mat-form-field>
+              <mat-form-field><mat-label>Commune / quartier</mat-label><input matInput formControlName="district" /></mat-form-field>
+              <mat-form-field><mat-label>Téléphone</mat-label><input matInput formControlName="phone" /></mat-form-field>
+              <div class="actions">
+                @if (editingSchool()) {
+                  <button mat-button type="button" (click)="cancelSchool()">Annuler</button>
+                }
+                <button mat-flat-button type="submit" [disabled]="schoolForm.invalid || !network.online()">
+                  {{ editingSchool() ? 'Enregistrer' : 'Ajouter' }}
+                </button>
+              </div>
+            </form>
+          </mat-card-content>
+        </mat-card>
+      }
+      <table mat-table [dataSource]="schools()">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Établissement</th>
+          <td mat-cell *matCellDef="let s"><strong>{{ s.name }}</strong><br /><small class="muted">{{ s.district }} {{ s.city }}</small></td>
+        </ng-container>
+        <ng-container matColumnDef="phone">
+          <th mat-header-cell *matHeaderCellDef>Téléphone</th>
+          <td mat-cell *matCellDef="let s">{{ s.phone }}</td>
+        </ng-container>
+        <ng-container matColumnDef="kits">
+          <th mat-header-cell *matHeaderCellDef class="num">Kits</th>
+          <td mat-cell *matCellDef="let s" class="num">{{ s.kit_count }}</td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let s" class="num">
+            @if (canManage) {
+              <button mat-icon-button type="button" (click)="editSchool(s)" aria-label="Modifier"><mat-icon>edit</mat-icon></button>
+              <mat-slide-toggle [checked]="s.is_active" (change)="toggleSchool(s)" [aria-label]="'Activer ' + s.name" />
+            }
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="['name', 'phone', 'kits', 'actions']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['name', 'phone', 'kits', 'actions']" [class.inactive]="!row.is_active"></tr>
+        <tr class="mat-row" *matNoDataRow><td class="mat-cell empty" colspan="4">Aucun établissement.</td></tr>
+      </table>
+    </div>
+  </mat-tab>
+</mat-tab-group>

@@ -21,3 +21,13 @@ code {
   font-family: 'Roboto Mono', Consolas, monospace;
   font-size: 0.9em;
 }
+
+@media print {
+  lib-update-banner {
+    display: none;
+  }
+
+  body {
+    background: #fff;
+  }
+}

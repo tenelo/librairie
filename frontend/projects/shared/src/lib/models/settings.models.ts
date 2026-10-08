@@ -20,6 +20,7 @@ export interface LibrarySettings extends PublicLibrarySettings {
   offline_max_hours: number;
   sync_interval_minutes: number;
   loyalty_points_per_1000: number;
+  price_rounding: number;
   currency: { code: string; label: string; decimals: number };
   sync_version: number;
   updated_at: string;

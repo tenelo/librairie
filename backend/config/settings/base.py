@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.audit",
     "apps.settings_app",
+    "apps.customers",
+    "apps.catalog",
 ]
 
 MIDDLEWARE = [

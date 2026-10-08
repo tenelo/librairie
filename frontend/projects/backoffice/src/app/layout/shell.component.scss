@@ -80,3 +80,20 @@
     display: none;
   }
 }
+
+// Impression (étiquettes, reçus, listes) : seule la page est imprimée.
+@media print {
+  .sidenav,
+  .toolbar {
+    display: none !important;
+  }
+
+  .page {
+    padding: 0;
+    max-width: none;
+  }
+
+  ::ng-deep .mat-drawer-content {
+    margin-left: 0 !important;
+  }
+}
