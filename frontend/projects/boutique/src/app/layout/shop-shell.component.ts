@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AuthService, NetworkIndicatorComponent } from '@librairie/shared';
+import { AuthService, NetworkIndicatorComponent, NotificationBellComponent } from '@librairie/shared';
 
 import { CartService } from '../services/cart.service';
 import { ShopInfoService } from '../services/shop-info.service';
@@ -22,6 +22,7 @@ import { ShopInfoService } from '../services/shop-info.service';
     MatBadgeModule,
     MatMenuModule,
     NetworkIndicatorComponent,
+    NotificationBellComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -47,6 +48,7 @@ import { ShopInfoService } from '../services/shop-info.service';
         @if (auth.isAuthenticated()) { <a mat-menu-item routerLink="/mes-commandes">Mes commandes</a> }
       </mat-menu>
       @if (auth.isAuthenticated()) {
+        <lib-notification-bell />
         <a mat-button routerLink="/mon-compte"><mat-icon>account_circle</mat-icon> <span class="label">Mon compte</span></a>
       } @else {
         <a mat-flat-button routerLink="/connexion">Se connecter</a>

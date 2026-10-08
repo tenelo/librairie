@@ -39,7 +39,7 @@ Status = OnlineOrder.Status
 
 # Événement métier émis à chaque étape (les notifications s'y abonnent) :
 # kwargs `order`, `event` (placed, confirmed, preparing, approval_requested, ready, picked_up,
-# cancelled, expired, reminder, deposit_paid) et `user`.
+# approval_answered, cancelled, expired, reminder, deposit_paid) et `user`.
 order_event = Signal()
 
 MAX_LINE_QTY = 999
@@ -405,6 +405,7 @@ def answer_proposal(order: OnlineOrder, user, accept: bool) -> OnlineOrder:
     sync_reservation(order, user)
     OrderStatusHistory.objects.create(order=order, from_status=order.status, to_status=order.status, user=user,
                                       note="Modification acceptée par le client")
+    _notify(order, "approval_answered", user)
     if _fully_prepared(order):
         _mark_ready(order, user)
     return order

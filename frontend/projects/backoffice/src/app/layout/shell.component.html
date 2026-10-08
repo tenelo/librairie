@@ -56,6 +56,7 @@
         </button>
       }
       <lib-network-indicator class="indicators" />
+      <lib-notification-bell />
       <button mat-icon-button type="button" (click)="syncNow()" [disabled]="syncStatus.syncing() || !network.online()"
               [matTooltip]="syncStatus.syncing() ? 'Synchronisation en cours…' : (sync.lastError() ?? 'Synchroniser maintenant')"
               aria-label="Synchroniser" [class.spinning]="syncStatus.syncing()">

@@ -3,11 +3,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '@librairie/shared';
+import { AuthService, NotificationPreferencesComponent } from '@librairie/shared';
 
 @Component({
   selector: 'bt-account-page',
-  imports: [RouterLink, MatCardModule, MatButtonModule, MatIconModule],
+  imports: [RouterLink, MatCardModule, MatButtonModule, MatIconModule, NotificationPreferencesComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1>Mon compte</h1>
@@ -30,6 +30,16 @@ import { AuthService } from '@librairie/shared';
           </button>
         </mat-card-actions>
       </mat-card>
+      <mat-card appearance="outlined" class="prefs">
+        <mat-card-header><mat-card-title>Mes notifications</mat-card-title>
+          <mat-card-subtitle>Soyez prévenu dès que votre commande est prête.</mat-card-subtitle></mat-card-header>
+        <mat-card-content><lib-notification-preferences /></mat-card-content>
+      </mat-card>
+    }
+  `,
+  styles: `
+    .prefs {
+      margin-top: 16px;
     }
   `,
 })

@@ -10,6 +10,7 @@ import re
 from collections import Counter
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -20,6 +21,7 @@ from apps.audit.services import log_event
 from apps.catalog.models import Article, Kit
 from apps.catalog.services import customize_kit
 from apps.core.money import to_fcfa
+from apps.core.signals import business_event
 from apps.customers.models import Customer
 from apps.settings_app.models import LibrarySettings
 from apps.stock.models import Depot, StockMovement
@@ -203,6 +205,8 @@ def close_session(context, payload):
               entity_id=session.pk, description=f"Clôture de caisse {session.z_number} : écart {session.variance} FCFA",
               new_values={"expected": session.expected_cash, "counted": counted, "variance": session.variance},
               client_timestamp=context.client_timestamp, origin=_origin(context))
+    transaction.on_commit(lambda: business_event.send(sender=CashSession, event="cash_session_closed",
+                                                      instance=session, user=context.user))
     return session
 
 

@@ -5,13 +5,20 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AuthService, NetworkStatusService, OfflineAuthService, apiErrorMessage } from '@librairie/shared';
+import {
+  AuthService,
+  NetworkStatusService,
+  NotificationPreferencesComponent,
+  OfflineAuthService,
+  apiErrorMessage,
+} from '@librairie/shared';
 
 import { AdminApiService } from '../../services/admin-api.service';
 
 @Component({
   selector: 'bo-profile-page',
-  imports: [ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule,
+    NotificationPreferencesComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1>Mon profil</h1>
@@ -76,8 +83,15 @@ import { AdminApiService } from '../../services/admin-api.service';
         </mat-card-content>
       </mat-card>
     </div>
+    <mat-card appearance="outlined" class="notifications">
+      <mat-card-header><mat-card-title>Mes notifications</mat-card-title></mat-card-header>
+      <mat-card-content><lib-notification-preferences /></mat-card-content>
+    </mat-card>
   `,
   styles: `
+    .notifications {
+      margin-top: 16px;
+    }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));

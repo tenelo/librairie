@@ -46,6 +46,8 @@ const IMPLEMENTED: Record<string, LazyComponent> = {
   'administration/moyens-de-paiement': () =>
     import('./pages/admin/payment-methods.page').then((m) => m.PaymentMethodsPage),
   'administration/depots': () => import('./pages/admin/depots.page').then((m) => m.DepotsPage),
+  'administration/notifications': () =>
+    import('./pages/admin/notifications.page').then((m) => m.NotificationsAdminPage),
   'commandes/a-confirmer': () => import('./pages/orders/orders.page').then((m) => m.OnlineOrdersPage),
   'commandes/a-preparer': () => import('./pages/orders/orders.page').then((m) => m.OnlineOrdersPage),
   'commandes/pretes': () => import('./pages/orders/orders.page').then((m) => m.OnlineOrdersPage),

@@ -161,7 +161,7 @@ export const MENU: MenuSection[] = [
         requiresOnline: true },
       { label: 'Paramètres librairie et reçus', path: 'parametres', permission: 'settings.manage',
         requiresOnline: true },
-      { label: 'Notifications', path: 'notifications', permission: 'settings.manage', phase: 8, requiresOnline: true },
+      { label: 'Notifications', path: 'notifications', permission: 'settings.manage', requiresOnline: true },
     ],
   },
 ];

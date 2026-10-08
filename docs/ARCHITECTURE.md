@@ -215,12 +215,18 @@ La réservation d'une commande est la somme de ses mouvements `RESERVATION` / `R
 (personnel), `/api/shop/` (catalogue public, commandes du client, paiements). Synchronisation :
 `online_order.prepare` (préparation faite sur un terminal) et source `online_orders` (commandes confirmées, en préparation, prêtes).
 
-### notifications (phase 8)
+### notifications (phase 8, livrée)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
-| `Notification` | `event`, `title`, `body`, `data` (JSON), `read_at` | FK `recipient` → User |
-| `NotificationPreference` | `event`, `in_app`, `push`, `email`, `sms` | FK `user` |
-| `PushSubscription` | `endpoint`, `p256dh`, `auth`, `user_agent` | FK `user`, `device` |
+| `Notification` | `event`, `title`, `body`, `url`, `data` (JSON), `read_at`, `deliveries` (résultat par canal) | FK `recipient` → User |
+| `NotificationPreference` | `event`, `in_app`, `push`, `email`, `sms` | FK `user` (unique par événement) |
+| `PushSubscription` | `endpoint`, `p256dh`, `auth`, `app` (backoffice, boutique), `user_agent`, `last_success_at` | FK `user`, `device` |
+
+Catalogue des événements : `apps/notifications/events.py` (public, permission des destinataires, canaux
+par défaut). Les applications émettent des signaux (`orders.services.order_event`,
+`core.signals.business_event`, `post_save` de `StockAlert`) que `notifications/receivers.py` traduit en
+notifications. API : `/api/notifications/` (liste, non lues, lu, tout lu, préférences, push, test,
+demande d'autorisation, catalogue).
 
 ### sync (phase 4, livrée)
 | Modèle | Champs principaux | Relations |

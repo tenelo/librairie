@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "apps.sales",
     "apps.inventory",
     "apps.orders",
+    "apps.notifications",
     "apps.sync",
 ]
 
@@ -205,6 +206,13 @@ VAPID_CLAIMS_EMAIL = env("VAPID_CLAIMS_EMAIL", default="mailto:admin@librairie.l
 # --- Paiement en ligne (acompte Mobile Money) ------------------------------
 # Classe implémentant apps.orders.payments.PaymentProvider ; la simulation est fournie par défaut.
 PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="apps.orders.payments.SandboxProvider")
+
+# --- Notifications -----------------------------------------------------------
+# Adresses publiques utilisées dans les liens des e-mails.
+BACKOFFICE_URL = env("BACKOFFICE_URL", default="http://localhost:4200")
+BOUTIQUE_URL = env("BOUTIQUE_URL", default="http://localhost:4300")
+# Fournisseurs de messages courts (classe implémentant apps.notifications.channels.MessageProvider).
+SMS_PROVIDER = env("SMS_PROVIDER", default="apps.notifications.channels.ConsoleMessageProvider")
 
 # --- Email -----------------------------------------------------------------
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")

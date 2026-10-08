@@ -10,6 +10,7 @@ from rest_framework.exceptions import APIException, PermissionDenied, Validation
 from apps.audit.models import AuditLog
 from apps.audit.services import log_event
 from apps.core.models import current_sync_version
+from apps.core.signals import business_event
 
 from .models import SyncConflict, SyncOperation
 from .registry import PULL_SOURCES, PUSH_HANDLERS, SyncConflictError, SyncContext
@@ -78,6 +79,7 @@ def apply_operation(op: dict, *, user, device, request=None) -> dict:
         log_event(AuditLog.Action.UPDATE, user=user, device=device, entity="SyncOperation", entity_id=op_id,
                   description=f"Opération rejetée {op['entity']}.{op['operation']} : {record.error}"[:255],
                   origin=AuditLog.Origin.SYNC, client_timestamp=client_ts)
+        business_event.send(sender=SyncOperation, event="sync_operation_failed", instance=record, user=user)
         return {"id": str(op_id), "status": "error", "error": record.error}
 
 

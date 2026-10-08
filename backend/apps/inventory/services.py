@@ -17,6 +17,7 @@ from rest_framework.exceptions import ValidationError
 from apps.audit.models import AuditLog
 from apps.audit.services import log_event
 from apps.catalog.models import Article, Kit
+from apps.core.signals import business_event
 from apps.stock.models import StockLevel, StockMovement
 from apps.stock.services import record_movement, refresh_alerts
 
@@ -160,6 +161,8 @@ def to_review(session: InventorySession, user):
         raise ValidationError({"status": "L'inventaire n'est pas en comptage."})
     session.status = Status.REVIEW
     session.save(update_fields=["status"])
+    transaction.on_commit(lambda: business_event.send(sender=InventorySession, event="inventory_to_review",
+                                                      instance=session, user=user))
     return session
 
 

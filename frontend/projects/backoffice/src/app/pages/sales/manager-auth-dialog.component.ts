@@ -6,7 +6,14 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { APP_CONFIG, LocalDbService, NetworkStatusService, OfflineUser, hashPin } from '@librairie/shared';
+import {
+  APP_CONFIG,
+  LocalDbService,
+  NetworkStatusService,
+  NotificationService,
+  OfflineUser,
+  hashPin,
+} from '@librairie/shared';
 import { firstValueFrom } from 'rxjs';
 
 export interface ManagerAuthData {
@@ -51,6 +58,11 @@ export interface ManagerAuthData {
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close>Annuler</button>
+        @if (network.online()) {
+          <button mat-button type="button" (click)="callManager()" [disabled]="called()">
+            {{ called() ? 'Responsable prévenu' : 'Appeler un responsable' }}
+          </button>
+        }
         <button mat-flat-button type="submit" [disabled]="!username || pin.length < 4 || busy()">Autoriser</button>
       </mat-dialog-actions>
     </form>
@@ -67,6 +79,8 @@ export class ManagerAuthDialogComponent {
   private readonly api = inject(APP_CONFIG).apiBaseUrl;
   private readonly local = inject(LocalDbService);
   protected readonly network = inject(NetworkStatusService);
+  private readonly notifications = inject(NotificationService);
+  protected readonly called = signal(false);
   protected readonly managers = signal<OfflineUser[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
@@ -133,5 +147,16 @@ export class ManagerAuthDialogComponent {
       return false;
     }
     return true;
+  }
+
+  /** Notifie les responsables (cloche, push) qu'une autorisation est attendue à ce poste. */
+  protected async callManager(): Promise<void> {
+    try {
+      const result = await this.notifications.requestAuthorization(`${this.data.title} — ${this.data.reason}`);
+      this.called.set(true);
+      this.error.set(result.notified ? null : 'Aucun responsable joignable : demandez-lui de venir au poste.');
+    } catch {
+      this.error.set('Impossible de prévenir un responsable pour le moment.');
+    }
   }
 }

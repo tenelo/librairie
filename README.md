@@ -22,7 +22,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 5 | Ventes et caisse : écran de caisse hors ligne, paiements multiples, reçus 58/80 mm et A4/A5, retours, ouverture/clôture, rapport Z, clients, crédit, avoirs, bons, fidélité | **Livrée** |
 | 6 | Inventaires : complet, partiel, tournant, gel du stock, comptage hors ligne multi-inventoristes, double comptage, rapport d'écarts Excel/PDF, validation avec ajustements | **Livrée** |
 | 7 | Boutique et commandes en ligne : catalogue, kits par établissement, panier, acompte Mobile Money (simulation), réservation, préparation par scan hors ligne, retrait par QR code en caisse, expiration Celery | **Livrée** |
-| 8 | Notifications | À venir |
+| 8 | Notifications : cloche et temps réel (WebSocket), Web Push VAPID, e-mail, SMS/WhatsApp (console), préférences par événement et par canal | **Livrée** |
 | 9 | Statistiques et exports | À venir |
 | 10 | Audit complet, durcissement | À venir |
 | 11 | Données de démonstration et documentation complète | À venir |
@@ -32,6 +32,31 @@ message explicite et la version imprimable HTML reste disponible. L'image Docker
 
 Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
 de livraison.
+
+### Ce que contient la phase 8 (notifications)
+
+- **Dans l'application** : cloche avec compteur dans le backoffice et la boutique, liste, « tout marquer
+  comme lu », alerte à l'arrivée avec lien direct ; **temps réel** par WebSocket (Django Channels,
+  `/ws/status/`, authentification JWT, reconnexion automatique).
+- **Web Push** (VAPID) même application fermée, géré par le service worker Angular (clic sur la
+  notification → ouverture de la page concernée) ; abonnement et consentement depuis le profil
+  (backoffice) ou « Mon compte » (boutique). Fonctionne sur l'application installée / construite, en HTTPS
+  (ou `localhost`).
+- **Canaux** (`backend/apps/notifications/channels.py`, interface `NotificationChannel`) : in-app, Web
+  Push, e-mail (SMTP) et SMS / WhatsApp via un `MessageProvider` à brancher sur un agrégateur
+  (implémentation console par défaut, `SMS_PROVIDER`). Diffusion par Celery, un canal en panne n'empêche
+  pas les autres ; le résultat de chaque envoi est conservé sur la notification.
+- **Événements** — personnel (destinataires selon leurs permissions) : nouvelle commande, annulation par
+  le client, réponse du client à une modification, commande bientôt expirée, stock bas / rupture, écart de
+  caisse à la clôture, demande d'autorisation (bouton « Appeler un responsable » de la fenêtre
+  d'autorisation), erreur de synchronisation, inventaire à valider. Client : commande confirmée, en
+  préparation, modification à valider, **prête à retirer** (avec le code de retrait), rappel avant
+  expiration, annulée, expirée, acompte reçu.
+- **Préférences** par utilisateur, par événement et par canal (profil / « Mon compte ») ; écran
+  Administration › Notifications : événements, destinataires, canaux par défaut, état du Web Push.
+
+**Tester** : ouvrir le backoffice et la boutique côte à côte, passer une commande dans la boutique : la
+cloche du backoffice s'incrémente aussitôt ; confirmer la commande : le client est notifié à son tour.
 
 ### Ce que contient la phase 7 (boutique et commandes en ligne)
 
@@ -289,16 +314,17 @@ Les modèles commentés sont dans les fichiers `.env.example` correspondants.
 
 ## Clés VAPID (Web Push)
 
-Les notifications push (phase 8) utilisent des clés VAPID. Pour les générer :
+Les notifications push utilisent une paire de clés VAPID, à générer une fois par installation :
 
 ```bash
 cd backend
-.venv/Scripts/vapid --gen          # crée private_key.pem et public_key.pem
-.venv/Scripts/vapid --applicationServerKey
+.venv/Scripts/python.exe manage.py generate_vapid_keys
 ```
 
-Reportez la clé « Application Server Key » dans `VAPID_PUBLIC_KEY` et le contenu de `private_key.pem`
-(ou sa version base64url) dans `VAPID_PRIVATE_KEY`, puis supprimez les fichiers `.pem` du dépôt.
+Copiez les deux lignes affichées (`VAPID_PUBLIC_KEY=…`, `VAPID_PRIVATE_KEY=…`) dans `backend/.env`, avec
+`VAPID_CLAIMS_EMAIL=mailto:contact@votre-librairie.ci`, puis redémarrez le serveur. Ne changez plus ces
+clés ensuite : les abonnements existants deviendraient invalides. Le navigateur n'autorise le push qu'en
+HTTPS (ou sur `localhost`) et avec l'application construite (`npm run build`, service worker actif).
 
 ## Déploiement HTTPS sur un VPS (Certbot)
 

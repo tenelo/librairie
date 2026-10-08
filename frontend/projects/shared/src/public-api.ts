@@ -39,3 +39,6 @@ export * from './lib/sales/cart';
 export * from './lib/sales/receipt.models';
 export * from './lib/sales/receipt.component';
 export * from './lib/sales/printer.service';
+export * from './lib/notifications/notification.service';
+export * from './lib/notifications/notification-bell.component';
+export * from './lib/notifications/notification-preferences.component';
