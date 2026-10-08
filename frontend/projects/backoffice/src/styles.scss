@@ -1,0 +1,19 @@
+@use '@angular/material' as mat;
+@use '../../shared/src/styles/base';
+
+// Thème Material 3 du backoffice : bleu (confiance, gestion) et orange en accent.
+// Le mode clair / sombre suit la propriété `color-scheme` posée par ThemeService.
+html {
+  color-scheme: light;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$orange-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}

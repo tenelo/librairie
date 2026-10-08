@@ -1,0 +1,98 @@
+<mat-sidenav-container class="shell">
+  <mat-sidenav
+    class="sidenav"
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="isHandset() ? menuOpen() : true"
+    (closedStart)="menuOpen.set(false)"
+  >
+    <div class="brand">
+      <mat-icon>auto_stories</mat-icon>
+      <span>Librairie</span>
+    </div>
+    <mat-nav-list aria-label="Menu principal">
+      @for (section of menu(); track section.path) {
+        @if (section.children.length === 0) {
+          <a mat-list-item [routerLink]="['/', section.path]" routerLinkActive="active">
+            <mat-icon matListItemIcon>{{ section.icon }}</mat-icon>
+            <span matListItemTitle>{{ section.label }}</span>
+          </a>
+        } @else {
+          <button
+            mat-list-item
+            type="button"
+            class="section-toggle"
+            [attr.aria-expanded]="expanded().has(section.path)"
+            (click)="toggleSection(section)"
+          >
+            <mat-icon matListItemIcon>{{ section.icon }}</mat-icon>
+            <span matListItemTitle>{{ section.label }}</span>
+            <mat-icon matListItemMeta>{{ expanded().has(section.path) ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+          @if (expanded().has(section.path)) {
+            @for (link of section.children; track link.path) {
+              <a
+                mat-list-item
+                class="sub-link"
+                [routerLink]="['/', section.path, link.path]"
+                routerLinkActive="active"
+              >
+                <span matListItemTitle>{{ link.label }}</span>
+                @if (link.requiresOnline && !network.online()) {
+                  <mat-icon matListItemMeta matTooltip="Nécessite une connexion">cloud_off</mat-icon>
+                }
+              </a>
+            }
+          }
+        }
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="content">
+    <mat-toolbar class="toolbar">
+      @if (isHandset()) {
+        <button mat-icon-button type="button" aria-label="Ouvrir le menu" (click)="menuOpen.set(true)">
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
+      <lib-network-indicator class="indicators" />
+      <span class="spacer"></span>
+      @if (device(); as d) {
+        <span class="device" matTooltip="Terminal de ce poste">
+          <mat-icon inline>devices</mat-icon> {{ d.code }}
+        </span>
+      }
+      <button
+        mat-icon-button
+        type="button"
+        (click)="theme.toggle()"
+        [attr.aria-label]="theme.mode() === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'"
+        [matTooltip]="theme.mode() === 'dark' ? 'Thème clair' : 'Thème sombre'"
+      >
+        <mat-icon>{{ theme.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </button>
+      <button mat-button type="button" [matMenuTriggerFor]="userMenu" class="user-button">
+        <mat-icon>account_circle</mat-icon>
+        <span class="user-name">{{ auth.user()?.full_name }}</span>
+      </button>
+      <mat-menu #userMenu="matMenu" xPosition="before">
+        <div class="menu-header">
+          <strong>{{ auth.user()?.full_name }}</strong>
+          <small>{{ auth.user()?.role?.label }}</small>
+        </div>
+        <mat-divider />
+        <a mat-menu-item routerLink="/mon-profil">
+          <mat-icon>person</mat-icon>
+          <span>Mon profil</span>
+        </a>
+        <button mat-menu-item type="button" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Se déconnecter</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+    <main class="page">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

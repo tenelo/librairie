@@ -1,0 +1,71 @@
+# Configuration HTTPS de production (une PWA exige HTTPS).
+# 1. Remplacer gestion.ma-librairie.ci et boutique.ma-librairie.ci par vos domaines.
+# 2. Obtenir les certificats avec Certbot (voir README, section « Déploiement HTTPS »).
+# 3. Copier ce fichier en nginx/conf.d/librairie.conf et redémarrer le service nginx.
+
+upstream django {
+    server backend:8000;
+}
+
+upstream frontend_backoffice {
+    server frontend:8080;
+}
+
+upstream frontend_boutique {
+    server frontend:8081;
+}
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+# Redirection HTTP → HTTPS, sauf le défi ACME de Certbot.
+server {
+    listen 80;
+    server_name gestion.ma-librairie.ci boutique.ma-librairie.ci;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name gestion.ma-librairie.ci;
+
+    ssl_certificate /etc/letsencrypt/live/gestion.ma-librairie.ci/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gestion.ma-librairie.ci/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    include /etc/nginx/snippets/librairie-backend.conf;
+
+    location / {
+        proxy_pass http://frontend_backoffice;
+        proxy_set_header Host $host;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name boutique.ma-librairie.ci;
+
+    ssl_certificate /etc/letsencrypt/live/boutique.ma-librairie.ci/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/boutique.ma-librairie.ci/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    include /etc/nginx/snippets/librairie-backend.conf;
+
+    location / {
+        proxy_pass http://frontend_boutique;
+        proxy_set_header Host $host;
+    }
+}

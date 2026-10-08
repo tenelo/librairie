@@ -1,0 +1,84 @@
+{
+  "$schema": "../../node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "navigationUrls": [
+    "/**",
+    "!/**/*.*",
+    "!/**/*__*",
+    "!/**/*__*/**",
+    "!/api/**",
+    "!/admin/**",
+    "!/ws/**",
+    "!/uploads/**"
+  ],
+  "assetGroups": [
+    {
+      "name": "app-shell",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "fonts",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/media/roboto-latin-*.woff2",
+          "/media/roboto-latin-ext-*.woff2",
+          "/media/material-icons-*.woff2"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/icons/**",
+          "/media/**",
+          "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|woff|woff2)"
+        ]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "product-images",
+      "urls": [
+        "/uploads/**"
+      ],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 2000,
+        "maxAge": "30d"
+      }
+    },
+    {
+      "name": "api-read",
+      "urls": [
+        "/api/settings/**",
+        "/api/catalog/**",
+        "/api/stock/**",
+        "/api/customers/**",
+        "/api/orders/**",
+        "/api/reports/**"
+      ],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "timeout": "5s",
+        "maxSize": 500,
+        "maxAge": "7d"
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.inactive {
+  opacity: 0.55;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  opacity: 0.7;
+}

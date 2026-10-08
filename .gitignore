@@ -1,0 +1,30 @@
+# Environnements et secrets
+.env
+backend/.env
+frontend/.env
+
+# Python
+__pycache__/
+*.pyc
+backend/.venv/
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+
+# Node / Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/coverage/
+
+# Certificats
+nginx/certbot/
+
+# Divers
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

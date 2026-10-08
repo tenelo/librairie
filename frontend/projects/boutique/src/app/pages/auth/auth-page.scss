@@ -1,0 +1,15 @@
+.auth-card {
+  max-width: 440px;
+  margin: 24px auto;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.error {
+  color: var(--mat-sys-error);
+}

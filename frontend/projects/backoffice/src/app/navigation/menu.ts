@@ -1,0 +1,186 @@
+/**
+ * Définition des menus du backoffice (section 11 de la spécification).
+ *
+ * Chaque entrée porte la permission requise : le menu affiché et les gardes de routes
+ * utilisent la même source, cohérente avec les permissions DRF côté serveur.
+ * `phase` indique la phase de réalisation des écrans encore en construction ;
+ * `requiresOnline` signale les écrans qui exigent le serveur.
+ */
+export interface MenuLink {
+  label: string;
+  path: string;
+  permission?: string;
+  phase?: number;
+  requiresOnline?: boolean;
+  description?: string;
+}
+
+export interface MenuSection {
+  label: string;
+  icon: string;
+  path: string;
+  permission?: string;
+  children: MenuLink[];
+}
+
+export const MENU: MenuSection[] = [
+  {
+    label: 'Tableau de bord',
+    icon: 'dashboard',
+    path: 'tableau-de-bord',
+    permission: 'dashboard.view',
+    children: [],
+  },
+  {
+    label: 'Caisse',
+    icon: 'point_of_sale',
+    path: 'caisse',
+    children: [
+      { label: 'Nouvelle vente', path: 'nouvelle-vente', permission: 'sales.create', phase: 5,
+        description: 'Écran de caisse : recherche, scan, kits, paiements multiples et reçus.' },
+      { label: 'Ventes en attente', path: 'en-attente', permission: 'sales.hold', phase: 5,
+        description: 'Reprise des ventes mises en attente.' },
+      { label: 'Historique des ventes', path: 'historique', permission: 'sales.view', phase: 5,
+        description: 'Consultation et réimpression des reçus (DUPLICATA).' },
+      { label: 'Retours', path: 'retours', permission: 'sales.return', phase: 5,
+        description: 'Retours partiels ou totaux à partir du numéro de reçu.' },
+      { label: 'Ouverture / Clôture', path: 'sessions', permission: 'cash.open_close', phase: 5,
+        description: 'Fond de caisse, entrées/sorties, comptage des billets et pièces.' },
+      { label: 'Rapports Z', path: 'rapports-z', permission: 'cash.z_report', phase: 5,
+        description: 'Rapports de clôture imprimables.' },
+    ],
+  },
+  {
+    label: 'Commandes en ligne',
+    icon: 'shopping_bag',
+    path: 'commandes',
+    children: [
+      { label: 'À confirmer', path: 'a-confirmer', permission: 'orders.confirm', phase: 7 },
+      { label: 'À préparer', path: 'a-preparer', permission: 'orders.prepare', phase: 7 },
+      { label: 'Prêtes', path: 'pretes', permission: 'orders.view', phase: 7 },
+      { label: 'Retirées', path: 'retirees', permission: 'orders.view', phase: 7 },
+      { label: 'Annulées / Expirées', path: 'annulees', permission: 'orders.view', phase: 7 },
+    ],
+  },
+  {
+    label: 'Catalogue',
+    icon: 'menu_book',
+    path: 'catalogue',
+    children: [
+      { label: 'Articles', path: 'articles', permission: 'catalog.view', phase: 2 },
+      { label: 'Kits scolaires', path: 'kits', permission: 'catalog.view', phase: 2 },
+      { label: 'Catégories', path: 'categories', permission: 'catalog.view', phase: 2 },
+      { label: 'Niveaux & établissements', path: 'niveaux', permission: 'catalog.view', phase: 2 },
+      { label: 'Étiquettes codes-barres', path: 'etiquettes', permission: 'catalog.view', phase: 2 },
+      { label: 'Import / Export', path: 'import-export', permission: 'catalog.import', phase: 2,
+        requiresOnline: true },
+    ],
+  },
+  {
+    label: 'Stock',
+    icon: 'inventory_2',
+    path: 'stock',
+    children: [
+      { label: 'État des stocks', path: 'etat', permission: 'stock.view', phase: 3 },
+      { label: 'Mouvements', path: 'mouvements', permission: 'stock.view', phase: 3 },
+      { label: 'Transferts', path: 'transferts', permission: 'stock.transfer', phase: 3 },
+      { label: 'Assemblage de kits', path: 'assemblage', permission: 'stock.kit_assembly', phase: 3 },
+      { label: 'Pertes / Casse', path: 'pertes', permission: 'stock.manage', phase: 3 },
+      { label: 'Alertes', path: 'alertes', permission: 'stock.view', phase: 3 },
+    ],
+  },
+  {
+    label: 'Achats',
+    icon: 'local_shipping',
+    path: 'achats',
+    children: [
+      { label: 'Fournisseurs', path: 'fournisseurs', permission: 'purchasing.view', phase: 3 },
+      { label: 'Bons de commande', path: 'bons-de-commande', permission: 'purchasing.view', phase: 3 },
+      { label: 'Réceptions', path: 'receptions', permission: 'purchasing.receive', phase: 3 },
+      { label: 'Suggestions de réapprovisionnement', path: 'suggestions', permission: 'purchasing.view', phase: 3 },
+    ],
+  },
+  {
+    label: 'Inventaires',
+    icon: 'fact_check',
+    path: 'inventaires',
+    children: [
+      { label: 'Nouvel inventaire', path: 'nouveau', permission: 'inventory.create', phase: 6 },
+      { label: 'Inventaires en cours', path: 'en-cours', permission: 'inventory.view', phase: 6 },
+      { label: 'Mes comptages', path: 'mes-comptages', permission: 'inventory.count', phase: 6 },
+      { label: 'Historique et écarts', path: 'historique', permission: 'inventory.view', phase: 6 },
+    ],
+  },
+  {
+    label: 'Clients',
+    icon: 'groups',
+    path: 'clients',
+    children: [
+      { label: 'Clients', path: 'liste', permission: 'customers.view', phase: 5 },
+      { label: 'Établissements scolaires', path: 'etablissements', permission: 'customers.view', phase: 2 },
+      { label: 'Crédits et avoirs', path: 'credits', permission: 'customers.manage', phase: 5 },
+      { label: 'Fidélité', path: 'fidelite', permission: 'customers.manage', phase: 5 },
+    ],
+  },
+  {
+    label: 'Statistiques',
+    icon: 'insights',
+    path: 'statistiques',
+    children: [
+      { label: 'Ventes', path: 'ventes', permission: 'stats.view', phase: 9, requiresOnline: true },
+      { label: 'Kits', path: 'kits', permission: 'stats.view', phase: 9, requiresOnline: true },
+      { label: 'Stock', path: 'stock', permission: 'stats.view', phase: 9, requiresOnline: true },
+      { label: 'Commandes en ligne', path: 'commandes', permission: 'stats.view', phase: 9, requiresOnline: true },
+      { label: 'Caisses', path: 'caisses', permission: 'stats.view', phase: 9, requiresOnline: true },
+      { label: 'Inventaires', path: 'inventaires', permission: 'stats.view', phase: 9, requiresOnline: true },
+    ],
+  },
+  {
+    label: 'Audit',
+    icon: 'policy',
+    path: 'audit',
+    children: [
+      { label: "Journal d'audit", path: 'journal', permission: 'audit.view', requiresOnline: true },
+      { label: 'Connexions', path: 'connexions', permission: 'audit.view', requiresOnline: true },
+    ],
+  },
+  {
+    label: 'Synchronisation',
+    icon: 'sync',
+    path: 'synchronisation',
+    children: [
+      { label: 'État', path: 'etat', permission: 'sync.view', phase: 4 },
+      { label: "File d'attente", path: 'file', permission: 'sync.view', phase: 4 },
+      { label: 'Conflits', path: 'conflits', permission: 'sync.manage', phase: 4 },
+    ],
+  },
+  {
+    label: 'Administration',
+    icon: 'admin_panel_settings',
+    path: 'administration',
+    children: [
+      { label: 'Utilisateurs', path: 'utilisateurs', permission: 'accounts.manage_users', requiresOnline: true },
+      { label: 'Rôles & permissions', path: 'roles', permission: 'accounts.manage_roles', requiresOnline: true },
+      { label: 'Terminaux', path: 'terminaux', permission: 'accounts.manage_devices', requiresOnline: true },
+      { label: 'Dépôts', path: 'depots', permission: 'settings.manage', phase: 3, requiresOnline: true },
+      { label: 'Moyens de paiement', path: 'moyens-de-paiement', permission: 'settings.manage', phase: 5,
+        requiresOnline: true },
+      { label: 'Paramètres librairie et reçus', path: 'parametres', permission: 'settings.manage',
+        requiresOnline: true },
+      { label: 'Notifications', path: 'notifications', permission: 'settings.manage', phase: 8, requiresOnline: true },
+    ],
+  },
+];
+
+/** Filtre le menu selon les permissions de l'utilisateur ; une section sans lien visible disparaît. */
+export function visibleMenu(menu: MenuSection[], can: (permission?: string) => boolean): MenuSection[] {
+  return menu
+    .filter((section) => can(section.permission))
+    .map((section) => ({ ...section, children: section.children.filter((link) => can(link.permission)) }))
+    .filter((section) => section.children.length > 0 || section.permission !== undefined);
+}
+
+/** Toutes les permissions donnant accès à une section (pour la garde de la route parente). */
+export function sectionPermissions(section: MenuSection): string[] {
+  return section.children.map((link) => link.permission).filter((p): p is string => !!p);
+}
