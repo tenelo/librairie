@@ -28,6 +28,7 @@ class LibrarySettingsSerializer(serializers.ModelSerializer):
             "order_expiry_hours",
             "sync_interval_minutes",
             "loyalty_points_per_1000",
+            "loyalty_point_value",
             "price_rounding",
             "currency",
             "sync_version",

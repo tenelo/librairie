@@ -31,3 +31,18 @@ code {
     background: #fff;
   }
 }
+
+// Impression d'un reçu : seul l'hôte du reçu est imprimé (voir PrinterService).
+.receipt-print-host {
+  display: none;
+}
+
+@media print {
+  body.receipt-printing > *:not(.receipt-print-host) {
+    display: none !important;
+  }
+
+  body.receipt-printing .receipt-print-host {
+    display: block;
+  }
+}

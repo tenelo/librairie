@@ -24,3 +24,26 @@ class School(SyncModel):
 
     def __str__(self):
         return f"{self.name} ({self.city})" if self.city else self.name
+
+
+class Customer(SyncModel):
+    """Client de la librairie (vente au comptoir ou compte boutique en ligne)."""
+
+    name = models.CharField("nom", max_length=150)
+    phone = models.CharField("téléphone", max_length=20, blank=True, db_index=True)
+    email = models.EmailField("e-mail", blank=True)
+    address = models.CharField("adresse", max_length=255, blank=True)
+    school = models.ForeignKey(School, verbose_name="établissement", on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name="customers")
+    user = models.OneToOneField("accounts.User", verbose_name="compte boutique", on_delete=models.SET_NULL,
+                                null=True, blank=True, related_name="customer")
+    credit_limit = models.PositiveBigIntegerField("plafond de crédit (FCFA)", default=0)
+    notes = models.TextField("remarques", blank=True)
+    is_active = models.BooleanField("actif", default=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "client"
+
+    def __str__(self):
+        return f"{self.name} ({self.phone})" if self.phone else self.name

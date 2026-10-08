@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import School
+from .models import Customer, School
 
 
 class SchoolSerializer(serializers.ModelSerializer):
@@ -22,3 +22,25 @@ class SchoolSerializer(serializers.ModelSerializer):
         if duplicates.exists():
             raise serializers.ValidationError({"name": "Un établissement de ce nom existe déjà dans cette ville."})
         return attrs
+
+
+class CustomerSerializer(serializers.ModelSerializer):
+    school_name = serializers.CharField(source="school.name", read_only=True, default=None)
+    credit_balance = serializers.SerializerMethodField()
+    loyalty_points = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Customer
+        fields = ["id", "name", "phone", "email", "address", "school", "school_name", "credit_limit",
+                  "credit_balance", "loyalty_points", "notes", "is_active", "sync_version", "updated_at"]
+        read_only_fields = ["sync_version", "updated_at"]
+
+    def get_credit_balance(self, obj) -> int:
+        from apps.sales.services import customer_balance
+
+        return customer_balance(obj)
+
+    def get_loyalty_points(self, obj) -> int:
+        from apps.sales.services import loyalty_balance
+
+        return loyalty_balance(obj)

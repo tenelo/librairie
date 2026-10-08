@@ -50,6 +50,21 @@ export interface OfflineUser {
   offlineMaxHours: number;
 }
 
+export interface HeldSale {
+  id: string;
+  label: string;
+  createdAt: number;
+  cashier: string;
+  state: Record<string, unknown>;
+}
+
+/** Copie locale d'un document créé sur le terminal (le `payload` envoyé au serveur + champs d'affichage). */
+export interface LocalRecord {
+  id: string;
+  createdAt: number;
+  [key: string]: unknown;
+}
+
 export interface MetaEntry {
   key: string;
   value: unknown;
@@ -76,6 +91,8 @@ export const MIRROR_TABLES = [
   'cash_sessions',
   'suppliers',
   'purchase_orders',
+  'credit_notes',
+  'vouchers',
 ] as const;
 export type MirrorTable = (typeof MIRROR_TABLES)[number];
 
@@ -104,6 +121,14 @@ export class LibrairieDb extends Dexie {
   cash_sessions!: Table<SyncedRow, string>;
   suppliers!: Table<SyncedRow, string>;
   purchase_orders!: Table<SyncedRow, string>;
+  credit_notes!: Table<SyncedRow, string>;
+  vouchers!: Table<SyncedRow, string>;
+  /** Ventes mises en attente sur ce terminal (reprise ultérieure). */
+  held_sales!: Table<HeldSale, string>;
+  /** Ventes, retours et mouvements de caisse faits sur ce terminal (historique, réimpression, rapport Z hors ligne). */
+  local_sales!: Table<LocalRecord, string>;
+  local_returns!: Table<LocalRecord, string>;
+  local_cash_movements!: Table<LocalRecord, string>;
   outbox!: Table<OutboxEntry, string>;
   users!: Table<OfflineUser, string>;
   meta!: Table<MetaEntry, string>;
@@ -135,6 +160,14 @@ export class LibrairieDb extends Dexie {
     this.version(2).stores({
       suppliers: 'id, name',
       purchase_orders: 'id, number, supplier, status',
+    });
+    this.version(3).stores({
+      credit_notes: 'id, &number',
+      vouchers: 'id, &code',
+      held_sales: 'id, createdAt',
+      local_sales: 'id, receipt_number, cash_session, createdAt',
+      local_returns: 'id, sale, createdAt',
+      local_cash_movements: 'id, session, createdAt',
     });
   }
 

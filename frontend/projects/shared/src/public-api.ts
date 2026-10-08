@@ -34,3 +34,7 @@ export * from './lib/offline/outbox.service';
 export * from './lib/offline/sync-engine.service';
 export * from './lib/offline/offline-auth.service';
 export * from './lib/offline/offline-data.service';
+export * from './lib/sales/cart';
+export * from './lib/sales/receipt.models';
+export * from './lib/sales/receipt.component';
+export * from './lib/sales/printer.service';
