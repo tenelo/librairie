@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.inventory",
     "apps.orders",
     "apps.notifications",
+    "apps.reports",
     "apps.sync",
 ]
 
@@ -196,6 +197,7 @@ CELERY_BEAT_SCHEDULE: dict = {
     "alertes-stock": {"task": "apps.stock.tasks.refresh_stock_alerts", "schedule": 3600.0},
     "expiration-commandes": {"task": "apps.orders.tasks.expire_online_orders", "schedule": 900.0},
     "rappel-commandes": {"task": "apps.orders.tasks.remind_online_orders", "schedule": 1800.0},
+    "rapports-planifies": {"task": "apps.reports.tasks.send_scheduled_reports", "schedule": 3600.0},
 }
 
 # --- Web Push (VAPID) ------------------------------------------------------

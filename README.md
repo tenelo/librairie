@@ -23,7 +23,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 6 | Inventaires : complet, partiel, tournant, gel du stock, comptage hors ligne multi-inventoristes, double comptage, rapport d'écarts Excel/PDF, validation avec ajustements | **Livrée** |
 | 7 | Boutique et commandes en ligne : catalogue, kits par établissement, panier, acompte Mobile Money (simulation), réservation, préparation par scan hors ligne, retrait par QR code en caisse, expiration Celery | **Livrée** |
 | 8 | Notifications : cloche et temps réel (WebSocket), Web Push VAPID, e-mail, SMS/WhatsApp (console), préférences par événement et par canal | **Livrée** |
-| 9 | Statistiques et exports | À venir |
+| 9 | Statistiques et exports : tableau de bord, ventes, kits, stock, commandes en ligne, caisses, inventaires, exports Excel/PDF, rapports planifiés par e-mail | **Livrée** |
 | 10 | Audit complet, durcissement | À venir |
 | 11 | Données de démonstration et documentation complète | À venir |
 
@@ -32,6 +32,29 @@ message explicite et la version imprimable HTML reste disponible. L'image Docker
 
 Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
 de livraison.
+
+### Ce que contient la phase 9 (statistiques et exports)
+
+- **Tableau de bord** : chiffre d'affaires, nombre de ventes, panier moyen et marge brute du jour, de la
+  semaine ou du mois, avec la variation par rapport à la période précédente ; ventes par heure ou par
+  jour, commandes en ligne en cours par statut, alertes de stock, meilleures ventes. Hors ligne : résumé
+  du jour calculé sur les ventes du terminal.
+- **Statistiques** (menu, en ligne) avec filtres de période (raccourcis ou dates) et de dépôt :
+  - **Ventes** : par jour, heure, jour de la semaine, article, catégorie, type, caissier, terminal,
+    mode de paiement (monnaie rendue déduite des espèces), canal comptoir / en ligne ;
+  - **Kits** : les plus vendus, par niveau, par établissement, saisonnalité sur 12 mois ;
+  - **Stock** : valorisation au CMP par catégorie, rotation et couverture, articles dormants, ruptures,
+    prévisions de réapprovisionnement ;
+  - **Commandes en ligne** : taux de retrait, d'annulation et d'expiration, délais moyens de
+    préparation et de retrait ;
+  - **Caisses** : écarts par caissier (manques, excédents) et détail des clôtures ;
+  - **Inventaires** : historique des écarts et de la démarque.
+- **Exports Excel et PDF** de chaque rapport (une feuille de synthèse et une feuille par tableau).
+- **Rapports planifiés** : envoi automatique par e-mail (veille, semaine ou mois écoulé) avec le
+  fichier Excel en pièce jointe (et le PDF si WeasyPrint est disponible), tâche Celery beat horaire.
+
+Graphiques : composant SVG léger (`lib-simple-chart`), sans dépendance externe, une échelle unique et
+une info-bulle au survol.
 
 ### Ce que contient la phase 8 (notifications)
 

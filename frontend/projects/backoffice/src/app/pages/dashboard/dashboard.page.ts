@@ -6,10 +6,11 @@ import { RouterLink } from '@angular/router';
 import { AuthService, DeviceService, NetworkStatusService, SyncStatusService } from '@librairie/shared';
 
 import { MENU, visibleMenu } from '../../navigation/menu';
+import { ActivityPanelComponent } from './activity-panel.component';
 
 @Component({
   selector: 'bo-dashboard-page',
-  imports: [MatCardModule, MatIconModule, RouterLink, DatePipe],
+  imports: [MatCardModule, MatIconModule, RouterLink, DatePipe, ActivityPanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1>Bonjour {{ auth.user()?.first_name || auth.user()?.username }}</h1>
@@ -55,6 +56,9 @@ import { MENU, visibleMenu } from '../../navigation/menu';
       </p>
     }
 
+    @if (auth.hasPermission('dashboard.view')) {
+      <bo-activity-panel />
+    }
     <h2>Accès rapide</h2>
     <section class="shortcuts">
       @for (section of sections(); track section.path) {

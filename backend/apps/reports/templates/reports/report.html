@@ -1,0 +1,53 @@
+{% load humanize_fcfa %}<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>{{ report.title }}</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm; @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size: 8pt; } }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9pt; color: #111; }
+  h1 { font-size: 16pt; color: #1f5fad; margin: 0 0 4px; }
+  h2 { font-size: 11pt; margin: 14px 0 4px; color: #1f5fad; }
+  .kpis { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .kpi { border: 1px solid #ccd; border-radius: 4px; padding: 4px 8px; min-width: 120px; }
+  .kpi span { display: block; font-size: 7.5pt; color: #555; }
+  .kpi strong { font-size: 11pt; }
+  table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  th { background: #1f5fad; color: #fff; padding: 3px 4px; text-align: left; font-weight: normal; }
+  td { padding: 2px 4px; border-bottom: 1px solid #ddd; }
+  .num { text-align: right; white-space: nowrap; }
+  .neg { color: #b00020; }
+</style>
+</head>
+<body>
+  <h1>{{ library.name }} — {{ report.title }}</h1>
+  <div>Du {{ report.period.date_from }} au {{ report.period.date_to }} · {{ report.period.depot_name }}</div>
+  <div class="kpis">
+    {% for item in report.summary %}
+      <div class="kpi"><span>{{ item.label }}</span>
+        <strong>{% if item.kind == "money" %}{{ item.value|default_if_none:0|fcfa }}{% elif item.kind == "percent" %}{{ item.value }} %{% else %}{{ item.value }}{% endif %}</strong>
+      </div>
+    {% endfor %}
+  </div>
+  {% for block in tables %}
+    <h2>{{ block.title }}</h2>
+    <table>
+      <thead><tr>{% for c in block.columns %}<th{% if c.kind != "text" and c.kind != "date" %} class="num"{% endif %}>{{ c.label }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for row in block.cells %}
+        <tr>{% for value, kind in row %}
+          {% if kind == "money" %}<td class="num{% if value < 0 %} neg{% endif %}">{{ value|default_if_none:0|fcfa }}</td>
+          {% elif kind == "percent" %}<td class="num">{{ value }} %</td>
+          {% elif kind == "int" or kind == "decimal" %}<td class="num">{{ value|default_if_none:"—" }}</td>
+          {% else %}<td>{{ value|default_if_none:"—" }}</td>{% endif %}
+        {% endfor %}</tr>
+      {% empty %}
+        <tr><td colspan="{{ block.columns|length }}">Aucune donnée.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+  <p>Édité le {{ generated_at|date:"d/m/Y H:i" }}</p>
+</body>
+</html>

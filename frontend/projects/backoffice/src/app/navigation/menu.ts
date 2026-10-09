@@ -121,12 +121,12 @@ export const MENU: MenuSection[] = [
     icon: 'insights',
     path: 'statistiques',
     children: [
-      { label: 'Ventes', path: 'ventes', permission: 'stats.view', phase: 9, requiresOnline: true },
-      { label: 'Kits', path: 'kits', permission: 'stats.view', phase: 9, requiresOnline: true },
-      { label: 'Stock', path: 'stock', permission: 'stats.view', phase: 9, requiresOnline: true },
-      { label: 'Commandes en ligne', path: 'commandes', permission: 'stats.view', phase: 9, requiresOnline: true },
-      { label: 'Caisses', path: 'caisses', permission: 'stats.view', phase: 9, requiresOnline: true },
-      { label: 'Inventaires', path: 'inventaires', permission: 'stats.view', phase: 9, requiresOnline: true },
+      { label: 'Ventes', path: 'ventes', permission: 'stats.view', requiresOnline: true },
+      { label: 'Kits', path: 'kits', permission: 'stats.view', requiresOnline: true },
+      { label: 'Stock', path: 'stock', permission: 'stats.view', requiresOnline: true },
+      { label: 'Commandes en ligne', path: 'commandes', permission: 'stats.view', requiresOnline: true },
+      { label: 'Caisses', path: 'caisses', permission: 'stats.view', requiresOnline: true },
+      { label: 'Inventaires', path: 'inventaires', permission: 'stats.view', requiresOnline: true },
     ],
   },
   {

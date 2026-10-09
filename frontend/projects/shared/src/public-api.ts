@@ -19,6 +19,7 @@ export * from './lib/format/fcfa.pipe';
 export * from './lib/format/api-error';
 export * from './lib/ui/update-banner.component';
 export * from './lib/ui/network-indicator.component';
+export * from './lib/ui/simple-chart.component';
 export * from './lib/models/catalog.models';
 export * from './lib/format/money';
 export * from './lib/catalog/ean13';

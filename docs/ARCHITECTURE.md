@@ -237,10 +237,16 @@ demande d'autorisation, catalogue).
 Gestionnaires d'opérations (`register_push`) et sources descendantes (`register_pull`) sont déclarés par
 chaque application ; côté terminal, la base Dexie `librairie-backoffice` a une table par source.
 
-### reports (phase 9)
+### reports (phase 9, livrée)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
-| `ScheduledReport` | `report`, `frequency`, `recipients`, `filters` (JSON), `last_sent_at` | FK `created_by` |
+| `ScheduledReport` | `name`, `report` (sales, kits, stock, orders, cash, inventories), `frequency` (DAILY, WEEKLY, MONTHLY), `recipients` (JSON), `filters` (JSON), `send_hour`, `is_active`, `last_sent_at`, `last_error` | FK `created_by` |
+
+Les rapports sont calculés à la demande (`apps/reports/services.py`) à partir des ventes, mouvements de
+stock, commandes, sessions de caisse et inventaires ; ils partagent une structure unique (synthèse +
+tableaux typés) affichée par le backoffice et exportée en Excel (`openpyxl`) ou PDF (WeasyPrint). API :
+`/api/reports/dashboard/`, `/api/reports/<rapport>/?date_from=&date_to=&depot=&export=xlsx|pdf`,
+`/api/reports/scheduled/`.
 
 ## 4. Relations clés (vue d'ensemble)
 
