@@ -25,13 +25,22 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 8 | Notifications : cloche et temps réel (WebSocket), Web Push VAPID, e-mail, SMS/WhatsApp (console), préférences par événement et par canal | **Livrée** |
 | 9 | Statistiques et exports : tableau de bord, ventes, kits, stock, commandes en ligne, caisses, inventaires, exports Excel/PDF, rapports planifiés par e-mail | **Livrée** |
 | 10 | Audit complet et durcissement : traçage de toutes les écritures, journal infalsifiable et exportable, limitation de débit, en-têtes de sécurité, tests de cohérence des permissions, accessibilité | **Livrée** |
-| 11 | Données de démonstration et documentation complète | À venir |
+| 11 | Données de démonstration (`seed_demo`) et documentation complète | **Livrée** |
 
 Sous Windows, WeasyPrint (PDF) nécessite les bibliothèques GTK : sans elles, le bouton PDF répond par un
 message explicite et la version imprimable HTML reste disponible. L'image Docker les inclut.
 
-Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
-de livraison.
+Toutes les phases sont livrées. Pour découvrir l'application avec des données réalistes, chargez les
+[données de démonstration](#données-de-démonstration) puis suivez la
+[procédure de test du mode hors connexion](#procédure-de-test-du-mode-hors-connexion).
+
+### Ce que contient la phase 11 (démonstration et documentation)
+
+- Commande `python manage.py seed_demo` : jeu de données réaliste et idempotent (voir
+  [Données de démonstration](#données-de-démonstration)), aussi chargeable au démarrage Docker
+  (`SEED_DEMO=1`).
+- Documentation complète : installation locale et Docker, variables d'environnement, clés VAPID,
+  déploiement HTTPS, enregistrement d'un terminal, procédure de test du mode hors connexion.
 
 ### Ce que contient la phase 10 (audit complet et durcissement)
 
@@ -332,6 +341,63 @@ cd backend && python -m pytest          # pytest + pytest-django
 cd frontend && npm test                 # Jasmine/Karma, Chrome headless (shared, backoffice, boutique)
 ```
 
+## Données de démonstration
+
+```bash
+cd backend
+.venv/Scripts/python.exe manage.py seed_demo            # environ 3 minutes ; --days 30 pour aller plus vite
+```
+
+La commande crée (sans rien écraser, et sans effet si elle a déjà été exécutée) :
+
+- un catalogue d'environ 190 articles de librairie ivoirienne (cahiers, écriture, géométrie, papeterie,
+  manuels scolaires du CP1 à la Terminale, services de photocopie et de reliure), avec codes-barres
+  internes, emplacements et seuils d'alerte, publiés sur la boutique ;
+- **54 kits scolaires** (CP1 → Terminale A, C, D) pour 3 établissements fictifs d'Abidjan, à prix calculé
+  avec remise ;
+- 4 fournisseurs, 46 clients, un stock initial puis des réassorts hebdomadaires (réceptions au CMP) ;
+- **3 mois de ventes** sur deux caisses de démonstration (`D01`, `D02`), avec le pic de la rentrée,
+  paiements espèces et Mobile Money, ouvertures et clôtures quotidiennes avec quelques écarts ;
+- 10 commandes en ligne à tous les statuts (reçue, confirmée, en préparation, prête, retirée, annulée,
+  expirée).
+
+Comptes de démonstration (mot de passe commun **`Demo-Librairie-2026`**, PIN **`2026`**) :
+
+| Identifiant | Rôle |
+|---|---|
+| `gerant` | Gérant |
+| `caissier1`, `caissier2` | Caissier |
+| `magasinier` | Magasinier |
+| `preparateur` | Préparateur |
+| `inventoriste` | Inventoriste |
+| `0701000000` à `0701000005` | Clients de la boutique (connexion par téléphone) |
+
+Ces comptes sont destinés aux essais : supprimez-les ou changez leurs mots de passe avant une mise en
+service. Les terminaux `C01`, `C02` et `T01` sont créés vides pour les essais en direct.
+
+## Procédure de test du mode hors connexion
+
+1. **Préparer le poste** : connectez-vous au backoffice (par exemple `caissier1`), associez le poste au
+   terminal `C01` (Administration › Terminaux, compte administrateur) et définissez un PIN dans
+   **Mon profil**. Ouvrez la caisse (Caisse › Ouverture / Clôture) et attendez la fin de la première
+   synchronisation (pastille « 0 en attente »).
+2. **Couper le réseau** : DevTools › Network › *Offline* (ou débrancher le Wi-Fi). La pastille passe à
+   « Hors ligne ».
+3. **Reprendre la session par PIN** : « Changer d'utilisateur » dans le menu du compte, puis
+   déverrouillage par PIN (fonctionne sans serveur, dans la limite de la durée hors ligne autorisée).
+4. **Vendre** : un kit scolaire et des articles simples, paiement mixte espèces + Orange Money (avec une
+   référence), impression du reçu. Le numéro de reçu `C01-AAAAMMJJ-0001` est attribué localement et la
+   vente apparaît dans Synchronisation › File d'attente.
+5. **Compter** : Inventaires › Mes comptages (un inventaire doit avoir été démarré avant la coupure) ;
+   **réceptionner** : Achats › Réceptions ; **préparer** une commande en ligne déjà téléchargée.
+6. **Rétablir le réseau** : la file se vide automatiquement (ou bouton de synchronisation). Vérifiez
+   l'absence de doublon (Caisse › Historique), le stock serveur (Stock › État des stocks), les comptages
+   et le journal d'audit : chaque opération porte l'utilisateur, le terminal, la date client et la date
+   serveur, avec l'origine « Synchronisation ».
+7. **Deux caisses hors ligne** : répétez sur un second navigateur associé à `C02` en vendant le même
+   article ; après synchronisation des deux postes, le stock reflète les deux ventes (le stock peut
+   devenir négatif : une alerte de rupture est alors levée) et les numéros de reçus restent distincts.
+
 ## Démarrage avec Docker
 
 ```bash
@@ -343,7 +409,8 @@ docker compose up -d --build
 Services : `postgres` (16), `redis` (7), `backend` (Gunicorn + workers Uvicorn, ASGI : HTTP et WebSocket),
 `celery_worker`, `celery_beat`, `frontend` (les deux PWA compilées, servies par nginx) et `nginx`
 (reverse proxy). Au démarrage, le backend applique les migrations, collecte les fichiers statiques et
-crée l'administrateur défini par `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
+crée l'administrateur défini par `ADMIN_USERNAME` / `ADMIN_PASSWORD` ; avec `SEED_DEMO=1`, il charge
+aussi les données de démonstration.
 
 - Backoffice : http://localhost (port `BACKOFFICE_PORT`)
 - Boutique : http://localhost:8081 (port `BOUTIQUE_PORT`)

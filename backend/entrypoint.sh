@@ -11,6 +11,10 @@ case "$role" in
     if [ -n "$ADMIN_PASSWORD" ]; then
       python manage.py ensure_admin
     fi
+    # Données de démonstration (idempotent : sans effet si elles existent déjà).
+    if [ "$SEED_DEMO" = "1" ]; then
+      python manage.py seed_demo
+    fi
     # Gunicorn pilote des workers Uvicorn : l'application ASGI sert HTTP et WebSocket (Channels).
     exec gunicorn config.asgi:application \
       --worker-class uvicorn_worker.UvicornWorker \
