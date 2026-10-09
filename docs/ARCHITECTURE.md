@@ -122,10 +122,15 @@ librairie/
 |---|---|
 | `LibrarySettings` (singleton) | `name`, `logo`, `address`, `phone`, `email`, `taxpayer_number` (NCC), `receipt_header`, `receipt_footer`, `vat_enabled`, `default_vat_rate`, `offline_max_hours` (défaut 72), `order_expiry_hours` (défaut 72), `sync_interval_minutes`, `loyalty_points_per_1000` |
 
-### audit (socle phase 1, complet phase 10)
+### audit (socle phase 1, complété en phase 10)
 | Modèle | Champs principaux | Relations |
 |---|---|---|
 | `AuditLog` | `action` (CREATE, UPDATE, DELETE, LOGIN, LOGIN_FAILED, LOGOUT, PIN_UNLOCK, DISCOUNT_OVERRIDE, REFUND, REPRINT, DRAWER_OPEN, PRICE_CHANGE, INVENTORY_VALIDATE, SYNC_CONFLICT…), `entity`, `entity_id`, `old_values` (JSON), `new_values` (JSON), `ip_address`, `server_timestamp`, `client_timestamp`, `origin` (ONLINE, SYNC) | FK `user`, `device` ; `role_code` copié |
+
+Traçage automatique (`apps/audit/tracking.py`) : signaux `pre_save` / `post_save` sur les modèles de
+référence, contexte par requête (`AuditContextMiddleware`) et par opération de synchronisation
+(`operation_scope`), écriture différée en fin de requête pour éviter les doublons avec les entrées
+explicites. `AuditLog` refuse toute modification ou suppression.
 
 ### catalog (phase 2, livrée)
 | Modèle | Champs principaux | Relations |

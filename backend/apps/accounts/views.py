@@ -169,6 +169,7 @@ class MeView(APIView):
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = "auth"
 
     @extend_schema(request=ChangePasswordSerializer, responses={204: None})
     def post(self, request):
@@ -186,6 +187,7 @@ class SetPinView(APIView):
     """Définit le PIN de l'utilisateur connecté (utilisé pour les relais de caisse et autorisations)."""
 
     permission_classes = [IsStaffMember]
+    throttle_scope = "auth"
 
     @extend_schema(request=SetPinSerializer, responses={204: None})
     def post(self, request):

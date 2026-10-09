@@ -42,6 +42,9 @@ def log_event(
         device = get_request_device(request)
     if client_timestamp is None:
         client_timestamp = get_client_timestamp(request)
+    from .tracking import mark_logged
+
+    mark_logged(entity, entity_id)
     return AuditLog.objects.create(
         action=action,
         entity=entity,

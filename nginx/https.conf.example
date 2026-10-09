@@ -3,6 +3,9 @@
 # 2. Obtenir les certificats avec Certbot (voir README, section « Déploiement HTTPS »).
 # 3. Copier ce fichier en nginx/conf.d/librairie.conf et redémarrer le service nginx.
 
+# 20 requêtes par minute et par adresse IP sur /api/auth/ (connexion, inscription, PIN).
+limit_req_zone $binary_remote_addr zone=librairie_auth:10m rate=20r/m;
+
 upstream django {
     server backend:8000;
 }

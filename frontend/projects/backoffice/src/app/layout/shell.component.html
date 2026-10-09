@@ -1,3 +1,4 @@
+<button class="skip-link" type="button" (click)="mainContent.focus()">Aller au contenu</button>
 <mat-sidenav-container class="shell">
   <mat-sidenav
     class="sidenav"
@@ -101,7 +102,7 @@
         </button>
       </mat-menu>
     </mat-toolbar>
-    <main class="page">
+    <main class="page" id="contenu" tabindex="-1" #mainContent>
       <router-outlet />
     </main>
   </mat-sidenav-content>

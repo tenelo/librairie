@@ -9,6 +9,7 @@ from rest_framework.exceptions import APIException, PermissionDenied, Validation
 
 from apps.audit.models import AuditLog
 from apps.audit.services import log_event
+from apps.audit.tracking import operation_scope
 from apps.core.models import current_sync_version
 from apps.core.signals import business_event
 
@@ -60,7 +61,7 @@ def apply_operation(op: dict, *, user, device, request=None) -> dict:
             raise PermissionDenied(f"Permission « {permission} » requise.")
         context = SyncContext(user=user, device=device, client_timestamp=client_ts, operation_id=op_id,
                               request=request)
-        with transaction.atomic():
+        with operation_scope(client_ts), transaction.atomic():
             result = handler(context, record.payload) or {}
         record.status = SyncOperation.Status.OK
         record.result = _jsonable(result)

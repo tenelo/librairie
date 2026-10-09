@@ -4,6 +4,14 @@ from django.conf import settings
 from django.db import models
 
 
+class AuditLogQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise PermissionError("Le journal d'audit n'est pas modifiable.")
+
+    def delete(self):
+        raise PermissionError("Le journal d'audit n'est pas modifiable.")
+
+
 class AuditLog(models.Model):
     """Entrée du journal d'audit. Écrite uniquement par le code serveur, jamais modifiable via l'API."""
 
@@ -58,5 +66,15 @@ class AuditLog(models.Model):
         verbose_name = "entrée d'audit"
         verbose_name_plural = "journal d'audit"
 
+    objects = AuditLogQuerySet.as_manager()
+
     def __str__(self):
         return f"{self.server_timestamp:%Y-%m-%d %H:%M} {self.action} {self.entity} {self.username}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise PermissionError("Une entrée du journal d'audit ne peut pas être modifiée.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionError("Une entrée du journal d'audit ne peut pas être supprimée.")

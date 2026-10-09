@@ -117,6 +117,15 @@ class Sale(SyncModel):
     def __str__(self):
         return self.receipt_number
 
+    def delete(self, using=None, keep_parents=False):
+        raise PermissionError("Une vente ne peut pas être supprimée : enregistrez un retour.")
+
+    def soft_delete(self):
+        raise PermissionError("Une vente ne peut pas être supprimée : enregistrez un retour.")
+
+    def hard_delete(self):
+        raise PermissionError("Une vente ne peut pas être supprimée : enregistrez un retour.")
+
 
 class SaleLine(SyncModel):
     class PriceKind(models.TextChoices):

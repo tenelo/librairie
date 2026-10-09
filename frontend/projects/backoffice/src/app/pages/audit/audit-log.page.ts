@@ -9,7 +9,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
-import { NetworkStatusService, apiErrorMessage } from '@librairie/shared';
+import { NetworkStatusService, apiErrorMessage, saveBlob } from '@librairie/shared';
 
 import { AdminApiService, AuditLogEntry } from '../../services/admin-api.service';
 
@@ -47,7 +47,28 @@ import { AdminApiService, AuditLogEntry } from '../../services/admin-api.service
         <mat-label>Au</mat-label>
         <input matInput type="date" [(ngModel)]="dateTo" (change)="reload(0)" />
       </mat-form-field>
+      @if (!connectionsOnly()) {
+        <label class="select">Type
+          <select [(ngModel)]="action" (change)="reload(0)">
+            <option value="">Tous</option>
+            @for (a of actions; track a.code) { <option [value]="a.code">{{ a.label }}</option> }
+          </select>
+        </label>
+        <label class="select">Origine
+          <select [(ngModel)]="origin" (change)="reload(0)">
+            <option value="">Toutes</option>
+            <option value="ONLINE">En ligne</option>
+            <option value="SYNC">Synchronisation (hors ligne)</option>
+            <option value="SYSTEM">Système</option>
+          </select>
+        </label>
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Entité</mat-label>
+          <input matInput [(ngModel)]="entity" (keyup.enter)="reload(0)" placeholder="Sale, Article, Customer…" />
+        </mat-form-field>
+      }
       <button mat-stroked-button type="button" (click)="reload(0)"><mat-icon>search</mat-icon> Filtrer</button>
+      <button mat-button type="button" (click)="exportXlsx()" [disabled]="!network.online()"><mat-icon>table_view</mat-icon> Exporter</button>
     </div>
     @if (loading()) {
       <mat-progress-bar mode="indeterminate" />
@@ -151,6 +172,19 @@ export class AuditLogPage {
   protected search = '';
   protected dateFrom = '';
   protected dateTo = '';
+  protected action = '';
+  protected origin = '';
+  protected entity = '';
+  protected readonly actions = [
+    { code: 'CREATE', label: 'Création' }, { code: 'UPDATE', label: 'Modification' },
+    { code: 'DELETE', label: 'Suppression' }, { code: 'CANCEL', label: 'Annulation' },
+    { code: 'REFUND', label: 'Retour / remboursement' }, { code: 'DISCOUNT_OVERRIDE', label: 'Remise au-delà du plafond' },
+    { code: 'PRICE_CHANGE', label: 'Modification de prix' }, { code: 'REPRINT', label: 'Réimpression de reçu' },
+    { code: 'DRAWER_OPEN', label: 'Ouverture de tiroir' }, { code: 'INVENTORY_VALIDATE', label: "Validation d'inventaire" },
+    { code: 'SYNC_CONFLICT', label: 'Conflit de synchronisation' }, { code: 'PERMISSIONS_CHANGE', label: 'Permissions' },
+    { code: 'PIN_UNLOCK', label: 'Déverrouillage PIN' }, { code: 'PIN_FAILED', label: 'Échec de PIN' },
+    { code: 'LOGIN', label: 'Connexion' }, { code: 'LOGIN_FAILED', label: 'Échec de connexion' },
+  ];
 
   constructor() {
     // Recharge lorsque l'on passe de « Journal » à « Connexions » (même composant réutilisé).
@@ -168,18 +202,30 @@ export class AuditLogPage {
     this.reload(event.pageIndex);
   }
 
+  private filters() {
+    return {
+      search: this.search,
+      date_from: this.dateFrom ? `${this.dateFrom}T00:00:00Z` : null,
+      date_to: this.dateTo ? `${this.dateTo}T23:59:59Z` : null,
+      connections: this.connectionsOnly() ? true : null,
+      action: this.action || null,
+      origin: this.origin || null,
+      entity: this.entity.trim() || null,
+    };
+  }
+
+  protected exportXlsx(): void {
+    this.api.exportAuditLogs(this.filters()).subscribe({
+      next: (blob) => saveBlob(blob, `journal-audit-${new Date().toISOString().slice(0, 10)}.xlsx`),
+      error: (err: unknown) => this.snack.open(apiErrorMessage(err), 'Fermer', { duration: 6000 }),
+    });
+  }
+
   reload(page: number): void {
     this.page.set(page);
     this.loading.set(true);
     this.api
-      .listAuditLogs({
-        page: page + 1,
-        page_size: this.pageSize,
-        search: this.search,
-        date_from: this.dateFrom ? `${this.dateFrom}T00:00:00Z` : null,
-        date_to: this.dateTo ? `${this.dateTo}T23:59:59Z` : null,
-        connections: this.connectionsOnly() ? true : null,
-      })
+      .listAuditLogs({ page: page + 1, page_size: this.pageSize, ...this.filters() })
       .subscribe({
         next: (result) => {
           this.rows.set(result.results);

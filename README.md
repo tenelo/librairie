@@ -24,7 +24,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 7 | Boutique et commandes en ligne : catalogue, kits par établissement, panier, acompte Mobile Money (simulation), réservation, préparation par scan hors ligne, retrait par QR code en caisse, expiration Celery | **Livrée** |
 | 8 | Notifications : cloche et temps réel (WebSocket), Web Push VAPID, e-mail, SMS/WhatsApp (console), préférences par événement et par canal | **Livrée** |
 | 9 | Statistiques et exports : tableau de bord, ventes, kits, stock, commandes en ligne, caisses, inventaires, exports Excel/PDF, rapports planifiés par e-mail | **Livrée** |
-| 10 | Audit complet, durcissement | À venir |
+| 10 | Audit complet et durcissement : traçage de toutes les écritures, journal infalsifiable et exportable, limitation de débit, en-têtes de sécurité, tests de cohérence des permissions, accessibilité | **Livrée** |
 | 11 | Données de démonstration et documentation complète | À venir |
 
 Sous Windows, WeasyPrint (PDF) nécessite les bibliothèques GTK : sans elles, le bouton PDF répond par un
@@ -32,6 +32,30 @@ message explicite et la version imprimable HTML reste disponible. L'image Docker
 
 Les menus des modules à venir sont déjà présents et protégés par les permissions ; ils affichent la phase
 de livraison.
+
+### Ce que contient la phase 10 (audit complet et durcissement)
+
+- **Traçage complet** : en plus des journalisations explicites des écrans, toute création, modification
+  ou suppression des données de référence (articles, kits, catégories, clients, établissements,
+  dépôts, fournisseurs, moyens de paiement, terminaux, utilisateurs, rôles, paramètres) est tracée
+  quel que soit le chemin : synchronisation des terminaux (avec la **date client** de l'opération
+  hors ligne), administration Django, commandes de gestion, tâches Celery. Diff JSON des seuls champs
+  modifiés, sans doublon avec les entrées explicites ; une opération de synchronisation rejetée ne
+  laisse aucune trace fantôme (`apps/audit/tracking.py`).
+- **Journal infalsifiable** : une entrée ne peut être ni modifiée ni supprimée (modèle, requêtes en
+  masse, API en lecture seule, administration en lecture seule).
+- **Consultation** : filtres par type d'action, origine (en ligne, synchronisation, système), entité,
+  utilisateur et période, **export Excel**.
+- **Ventes** : aucune suppression possible, ni physique ni logique (un retour est obligatoire).
+- **Sécurité** : limitation de débit sur la connexion, le rafraîchissement du jeton, l'inscription, la
+  vérification et la définition du PIN, le changement de mot de passe (Django) et sur `/api/auth/`
+  (Nginx) ; en-têtes de sécurité, compression gzip, `server_tokens off` ; `manage.py check --deploy`
+  sans avertissement en configuration de production.
+- **Cohérence des permissions** (tests) : seuls les points d'accès publics prévus sont ouverts sans
+  authentification, et chaque permission utilisée par les menus et les routes du backoffice existe côté
+  serveur.
+- **Accessibilité** : lien « Aller au contenu », focus clavier toujours visible, respect de la préférence
+  « réduire les animations », libellés ARIA sur les commandes icônes.
 
 ### Ce que contient la phase 9 (statistiques et exports)
 

@@ -26,6 +26,7 @@ import { ShopInfoService } from '../services/shop-info.service';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <button class="skip-link" type="button" (click)="mainContent.focus()">Aller au contenu</button>
     <mat-toolbar class="toolbar">
       <a routerLink="/" class="brand">
         <mat-icon>auto_stories</mat-icon>
@@ -54,7 +55,7 @@ import { ShopInfoService } from '../services/shop-info.service';
         <a mat-flat-button routerLink="/connexion">Se connecter</a>
       }
     </mat-toolbar>
-    <main class="page"><router-outlet /></main>
+    <main class="page" id="contenu" tabindex="-1" #mainContent><router-outlet /></main>
     <footer class="footer">
       @if (shop.info(); as info) {
         <span>{{ info.name }} · {{ info.address }} {{ info.city }}</span>

@@ -110,6 +110,10 @@ export class AdminApiService {
     return this.http.get<Paginated<AuditLogEntry>>(`${this.api}/audit/logs/`, { params: toParams(query) });
   }
 
+  exportAuditLogs(query: QueryParams): Observable<Blob> {
+    return this.http.get(`${this.api}/audit/logs/export/`, { params: toParams(query), responseType: 'blob' });
+  }
+
   changePassword(currentPassword: string, newPassword: string): Observable<void> {
     return this.http.post<void>(`${this.api}/auth/me/password/`, {
       current_password: currentPassword,

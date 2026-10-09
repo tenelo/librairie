@@ -13,6 +13,9 @@ SESSION_COOKIE_SECURE = env.bool("SECURE_COOKIES", default=True)
 CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
 SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# Préchargement HSTS volontairement désactivé par défaut (engagement difficilement réversible).
+SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
+SILENCED_SYSTEM_CHECKS = [] if SECURE_HSTS_PRELOAD else ["security.W021"]
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 # Les sondes de santé internes (docker) passent en HTTP.
