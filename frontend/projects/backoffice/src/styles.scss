@@ -1,7 +1,10 @@
 @use '@angular/material' as mat;
 @use '../../shared/src/styles/base';
+@use './theme-colors' as brand;
 
-// Thème Material 3 du backoffice : bleu (confiance, gestion) et orange en accent.
+// Thème Material 3 du backoffice, aux couleurs de l'enseigne ETS MASSA (Librairie générale) :
+// vert des piliers et des gilets (primaire), bleu du lettrage (secondaire), jaune de l'enseigne
+// (tertiaire) et rouge du nom (erreur). Palettes générées dans `_theme-colors.scss`.
 // Le mode clair / sombre suit la propriété `color-scheme` posée par ThemeService.
 html {
   color-scheme: light;
@@ -9,11 +12,69 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$orange-palette,
+        primary: brand.$primary-palette,
+        tertiary: brand.$tertiary-palette,
       ),
       typography: Roboto,
       density: 0,
     )
   );
+
+  // Couleurs franches de l'enseigne, pour les éléments d'identité (bandeau, logo, liserés).
+  --bo-brand-yellow: #f4c20d;
+  --bo-brand-green: light-dark(#1e7b34, #4aa256);
+  --bo-brand-red: #d7263d;
+  --bo-brand-blue: #1f4fbf;
+  --bo-brand-stripe: linear-gradient(90deg, #1e7b34 0 50%, #f4c20d 50% 100%);
+}
+
+// Bandeau façon enseigne : fond jaune, nom en rouge, activité en bleu.
+.bo-signboard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bo-brand-yellow);
+  color: var(--bo-brand-blue);
+  border-bottom: 4px solid #1e7b34;
+
+  img {
+    width: 40px;
+    height: 40px;
+    flex: none;
+  }
+
+  .bo-signboard-name {
+    display: block;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.1;
+    color: var(--bo-brand-red);
+  }
+
+  .bo-signboard-tagline {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+
+// Pages d'accès (connexion, reprise par PIN) : fond vert de la boutique, carte avec l'enseigne.
+.bo-access {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+  background:
+    linear-gradient(180deg, transparent 0 calc(100% - 8px), var(--bo-brand-yellow) calc(100% - 8px)),
+    light-dark(#1e7b34, #0e3a19);
+
+  .mat-mdc-card {
+    overflow: hidden;
+  }
 }

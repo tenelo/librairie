@@ -7,15 +7,10 @@
   border-right: 1px solid var(--mat-sys-outline-variant);
 }
 
+// Même hauteur que la barre d'outils (64 px + liseré de 4 px).
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 64px;
-  padding: 0 20px;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--mat-sys-primary);
+  height: 68px;
+  box-sizing: border-box;
 }
 
 .section-toggle {
@@ -33,8 +28,9 @@
 }
 
 .active {
-  background: var(--mat-sys-secondary-container);
-  color: var(--mat-sys-on-secondary-container);
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  box-shadow: inset 4px 0 0 var(--bo-brand-green);
 }
 
 .toolbar {
@@ -43,7 +39,9 @@
   z-index: 2;
   gap: 8px;
   background: var(--mat-sys-surface-container);
-  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  // Liseré vert et jaune, comme les piliers et l'enseigne de la boutique.
+  border-bottom: 4px solid transparent;
+  border-image: var(--bo-brand-stripe) 1;
 }
 
 .spacer {

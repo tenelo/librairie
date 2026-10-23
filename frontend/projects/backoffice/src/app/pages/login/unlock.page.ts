@@ -20,8 +20,15 @@ import { NetworkStatusService, OfflineAuthService, OfflineUser } from '@librairi
     MatButtonModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="unlock">
+    <div class="bo-access">
       <mat-card class="card">
+        <div class="bo-signboard">
+          <img src="logo.svg" alt="" />
+          <div>
+            <span class="bo-signboard-name">ETS MASSA</span>
+            <span class="bo-signboard-tagline">Librairie générale · Photocopie</span>
+          </div>
+        </div>
         <mat-card-header>
           <mat-icon mat-card-avatar class="logo">lock</mat-icon>
           <mat-card-title>Reprendre la main</mat-card-title>
@@ -64,15 +71,11 @@ import { NetworkStatusService, OfflineAuthService, OfflineUser } from '@librairi
     </div>
   `,
   styles: `
-    .unlock {
-      min-height: 100dvh;
-      display: grid;
-      place-items: center;
-      padding: 16px;
-      background: var(--mat-sys-surface-container-low);
-    }
     .card {
       width: min(440px, 100%);
+    }
+    mat-card-header {
+      padding-top: 16px;
     }
     .logo {
       font-size: 40px;

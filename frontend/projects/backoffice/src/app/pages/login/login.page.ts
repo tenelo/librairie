@@ -27,15 +27,21 @@ import { PinCaptureDialogComponent } from './pin-capture-dialog.component';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="login">
+    <div class="bo-access">
       <mat-card class="card">
         @if (loading()) {
           <mat-progress-bar mode="indeterminate" />
         }
+        <div class="bo-signboard">
+          <img src="logo.svg" alt="" />
+          <div>
+            <span class="bo-signboard-name">ETS MASSA</span>
+            <span class="bo-signboard-tagline">Librairie générale · Photocopie</span>
+          </div>
+        </div>
         <mat-card-header>
-          <mat-icon mat-card-avatar class="logo">auto_stories</mat-icon>
-          <mat-card-title>Librairie</mat-card-title>
-          <mat-card-subtitle>Espace du personnel</mat-card-subtitle>
+          <mat-card-title>Espace du personnel</mat-card-title>
+          <mat-card-subtitle>Connectez-vous pour accéder à la gestion</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           @if (!network.online()) {
@@ -88,22 +94,11 @@ import { PinCaptureDialogComponent } from './pin-capture-dialog.component';
     </div>
   `,
   styles: `
-    .login {
-      min-height: 100dvh;
-      display: grid;
-      place-items: center;
-      padding: 16px;
-      background: var(--mat-sys-surface-container-low);
-    }
     .card {
       width: min(420px, 100%);
-      overflow: hidden;
     }
-    .logo {
-      font-size: 40px;
-      width: 40px;
-      height: 40px;
-      color: var(--mat-sys-primary);
+    mat-card-header {
+      padding-top: 16px;
     }
     form {
       display: flex;
