@@ -6,9 +6,12 @@
     [opened]="isHandset() ? menuOpen() : true"
     (closedStart)="menuOpen.set(false)"
   >
-    <div class="brand">
-      <mat-icon>auto_stories</mat-icon>
-      <span>Librairie</span>
+    <div class="bo-signboard brand">
+      <img src="logo.svg" alt="" />
+      <div>
+        <span class="bo-signboard-name">ETS MASSA</span>
+        <span class="bo-signboard-tagline">Librairie générale · Photocopie</span>
+      </div>
     </div>
     <mat-nav-list aria-label="Menu principal">
       @for (section of menu(); track section.path) {
