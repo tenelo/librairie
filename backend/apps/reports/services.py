@@ -20,7 +20,7 @@ from apps.inventory.models import InventoryLine, InventorySession
 from apps.orders.models import OnlineOrder
 from apps.purchasing.services import reorder_suggestions
 from apps.sales.models import CashSession, Payment, PaymentMethod, Sale, SaleLine, SaleReturn
-from apps.stock.models import Depot, StockAlert, StockLevel, StockMovement
+from apps.stock.models import Depot, Library, StockAlert, StockLevel, StockMovement
 
 WEEKDAYS = ["", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 MONTHS = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
@@ -32,9 +32,15 @@ class Period:
     date_from: date
     date_to: date
     depot: Depot | None = None
+    library: Library | None = None
 
     @classmethod
-    def from_params(cls, params, default_days=30):
+    def from_params(cls, params, default_days=30, library=None):
+        """Période et périmètre d'un rapport.
+
+        `library` (imposé pour un employé rattaché à une librairie) l'emporte sur le paramètre
+        `library` ; un dépôt d'une autre librairie est alors ignoré.
+        """
         today = timezone.localdate()
         try:
             date_to = date.fromisoformat(params.get("date_to")) if params.get("date_to") else today
@@ -45,7 +51,11 @@ class Period:
         if date_from > date_to:
             date_from, date_to = date_to, date_from
         depot = Depot.objects.filter(pk=params.get("depot")).first() if params.get("depot") else None
-        return cls(date_from, date_to, depot)
+        if library is None and params.get("library"):
+            library = Library.objects.filter(pk=params.get("library")).first()
+        if depot is not None and library is not None and depot.library_id != library.pk:
+            depot = None
+        return cls(date_from, date_to, depot, library)
 
     @property
     def start(self) -> datetime:
@@ -60,12 +70,23 @@ class Period:
         return (self.date_to - self.date_from).days + 1
 
     def previous(self) -> "Period":
-        return Period(self.date_from - timedelta(days=self.days), self.date_from - timedelta(days=1), self.depot)
+        return Period(self.date_from - timedelta(days=self.days), self.date_from - timedelta(days=1), self.depot,
+                      self.library)
+
+    def scope(self, queryset, field="depot"):
+        """Restreint un queryset au dépôt choisi, sinon à la librairie choisie (champ dépôt `field`)."""
+        if self.depot:
+            return queryset.filter(**{field: self.depot})
+        if self.library:
+            return queryset.filter(**{f"{field}__library": self.library})
+        return queryset
 
     def as_dict(self):
         return {"date_from": self.date_from.isoformat(), "date_to": self.date_to.isoformat(),
                 "depot": str(self.depot.pk) if self.depot else None,
-                "depot_name": self.depot.name if self.depot else "Tous les dépôts", "days": self.days}
+                "library": str(self.library.pk) if self.library else None,
+                "depot_name": self.depot.name if self.depot else (
+                    self.library.name if self.library else "Toutes les librairies"), "days": self.days}
 
 
 def col(key, label, kind="text"):
@@ -96,8 +117,7 @@ def variation(current, previous) -> float | None:
 
 def sales_qs(period: Period):
     queryset = Sale.objects.filter(status=Sale.Status.COMPLETED, sold_at__gte=period.start, sold_at__lt=period.end)
-    if period.depot:
-        queryset = queryset.filter(depot=period.depot)
+    queryset = period.scope(queryset)
     return queryset
 
 
@@ -108,8 +128,7 @@ def sales_kpis(period: Period) -> dict:
     cost = SaleLine.objects.filter(sale__in=sales).aggregate(
         cost=Coalesce(Sum(F("unit_cost") * F("quantity")), 0))["cost"]
     returns = SaleReturn.objects.filter(returned_at__gte=period.start, returned_at__lt=period.end)
-    if period.depot:
-        returns = returns.filter(sale__depot=period.depot)
+    returns = period.scope(returns, "sale__depot")
     refunded = returns.aggregate(total=Coalesce(Sum("total"), 0))["total"]
     revenue = totals["revenue"] - refunded
     return {
@@ -134,6 +153,11 @@ GROUPINGS = {
     "category": "Par catégorie", "type": "Par type d'article", "cashier": "Par caissier", "device": "Par terminal",
     "payment": "Par mode de paiement", "channel": "Par canal",
 }
+
+
+def sales_title(group: str) -> str:
+    """Titre d'un tableau du rapport des ventes : « Vente par jour », « Vente par mode de paiement »…"""
+    return "Vente " + GROUPINGS[group][0].lower() + GROUPINGS[group][1:]
 
 
 def sales_breakdown(period: Period, group: str) -> dict:
@@ -170,7 +194,7 @@ def sales_breakdown(period: Period, group: str) -> dict:
             result.append({"label": name, "count": row["count"], "revenue": row["revenue"],
                            "average": round(row["revenue"] / row["count"]) if row["count"] else 0})
         chart = {"type": "line" if group == "day" else "bar", "x": "label", "y": "revenue"}
-        return table(group, GROUPINGS[group], money, result, chart)
+        return table(group, sales_title(group), money, result, chart)
     if group == "payment":
         payments = Payment.objects.filter(sale__in=sales).values("method__code", "method__label", "method__kind") \
             .annotate(count=Count("sale", distinct=True), amount=Sum("amount")).order_by("-amount")
@@ -182,7 +206,7 @@ def sales_breakdown(period: Period, group: str) -> dict:
         total = sum(r["revenue"] for r in rows)
         for r in rows:
             r["share"] = pct(r["revenue"], total)
-        return table(group, GROUPINGS[group], [col("label", "Mode de paiement"), col("count", "Ventes", "int"),
+        return table(group, sales_title(group), [col("label", "Mode de paiement"), col("count", "Ventes", "int"),
                                                col("revenue", "Montant encaissé", "money"), col("share", "Part", "percent")],
                      rows, {"type": "bar", "x": "label", "y": "revenue"})
     columns = [col("label", GROUPINGS.get(group, "").replace("Par ", "").capitalize()), col("quantity", "Quantité", "int"),
@@ -194,7 +218,8 @@ def sales_breakdown(period: Period, group: str) -> dict:
     else:
         group = "article"
         rows = _line_rows(lines, ["article__code", "article__name"], lambda r: f"{r['article__name']} ({r['article__code']})")
-    return table(group, GROUPINGS[group], columns, rows[:200], {"type": "bar", "x": "label", "y": "revenue", "limit": 15})
+    return table(group, sales_title(group), columns, rows[:200], {"type": "bar", "x": "label", "y": "revenue",
+                                                                  "limit": 15})
 
 
 def sales_report(period: Period, groups=None) -> dict:
@@ -262,8 +287,7 @@ def kits_report(period: Period) -> dict:
 def stock_report(period: Period, dormant_days=90) -> dict:
     levels = StockLevel.objects.select_related("article", "article__category", "depot").filter(
         article__is_active=True)
-    if period.depot:
-        levels = levels.filter(depot=period.depot)
+    levels = period.scope(levels)
     by_article = {}
     for level in levels:
         row = by_article.setdefault(level.article_id, {"article": level.article, "quantity": 0, "reserved": 0})
@@ -271,8 +295,7 @@ def stock_report(period: Period, dormant_days=90) -> dict:
         row["reserved"] += level.reserved
     movements = StockMovement.objects.filter(kind=StockMovement.Kind.SALE, occurred_at__gte=period.start,
                                              occurred_at__lt=period.end)
-    if period.depot:
-        movements = movements.filter(depot=period.depot)
+    movements = period.scope(movements)
     sold = {r["article_id"]: -r["q"] for r in movements.values("article_id").annotate(q=Sum("quantity"))}
     last_sale = dict(StockMovement.objects.filter(kind=StockMovement.Kind.SALE).values("article_id")
                      .annotate(last=Max("occurred_at")).values_list("article_id", "last"))
@@ -338,8 +361,7 @@ def stock_report(period: Period, dormant_days=90) -> dict:
 
 def orders_report(period: Period) -> dict:
     orders = OnlineOrder.objects.filter(created_at__gte=period.start, created_at__lt=period.end)
-    if period.depot:
-        orders = orders.filter(pickup_depot=period.depot)
+    orders = period.scope(orders, "pickup_depot")
     total = orders.count()
     counts = {row["status"]: row["n"] for row in orders.values("status").annotate(n=Count("id"))}
     closed = sum(counts.get(s, 0) for s in ("PICKED_UP", "CANCELLED", "EXPIRED"))
@@ -375,8 +397,7 @@ def orders_report(period: Period) -> dict:
 def cash_report(period: Period) -> dict:
     sessions = CashSession.objects.filter(status=CashSession.Status.CLOSED, closed_at__gte=period.start,
                                           closed_at__lt=period.end)
-    if period.depot:
-        sessions = sessions.filter(depot=period.depot)
+    sessions = period.scope(sessions)
     rows = []
     for row in (sessions.values("opened_by__username", "opened_by__first_name", "opened_by__last_name")
                 .annotate(n=Count("id"), net=Coalesce(Sum("variance"), 0),
@@ -415,8 +436,7 @@ def inventories_report(period: Period) -> dict:
     sessions = InventorySession.objects.filter(status__in=[InventorySession.Status.VALIDATED,
                                                            InventorySession.Status.CLOSED],
                                                validated_at__gte=period.start, validated_at__lt=period.end)
-    if period.depot:
-        sessions = sessions.filter(depot=period.depot)
+    sessions = period.scope(sessions)
     rows = []
     for session in sessions.select_related("depot").order_by("-validated_at"):
         lines = InventoryLine.objects.filter(session=session)
@@ -443,15 +463,13 @@ def inventories_report(period: Period) -> dict:
 # --- Tableau de bord ---------------------------------------------------------------------------
 
 
-def dashboard(scope: str = "today", depot=None) -> dict:
+def dashboard(scope: str = "today", depot=None, library=None) -> dict:
     today = timezone.localdate()
     starts = {"today": today, "week": today - timedelta(days=today.weekday()), "month": today.replace(day=1)}
-    period = Period(starts.get(scope, today), today, depot)
+    period = Period(starts.get(scope, today), today, depot, library)
     current = sales_kpis(period)
     previous = sales_kpis(period.previous())
-    orders = OnlineOrder.objects.filter(status__in=OnlineOrder.OPEN)
-    if depot:
-        orders = orders.filter(pickup_depot=depot)
+    orders = period.scope(OnlineOrder.objects.filter(status__in=OnlineOrder.OPEN), "pickup_depot")
     by_status = {row["status"]: row["n"] for row in orders.values("status").annotate(n=Count("id"))}
     alerts = StockAlert.objects.filter(resolved_at__isnull=True)
     hourly = sales_breakdown(period, "hour" if scope == "today" else "day")
@@ -488,6 +506,6 @@ REPORTS = {
 }
 
 
-def build(name: str, params) -> dict:
-    period = Period.from_params(params)
+def build(name: str, params, library=None) -> dict:
+    period = Period.from_params(params, library=library)
     return REPORTS[name][1](period, params)

@@ -5,6 +5,7 @@ Chaque ligne porte `id`, `sync_version` et `is_deleted`.
 """
 from apps.catalog.models import (
     Article,
+    ArticleLibraryPrice,
     Barcode,
     Brand,
     Category,
@@ -17,7 +18,7 @@ from apps.catalog.models import (
 from apps.customers.models import School
 from apps.purchasing.models import PurchaseOrder, Supplier
 from apps.settings_app.models import LibrarySettings
-from apps.stock.models import Depot, StockLevel
+from apps.stock.models import Depot, Library, StockLevel
 
 from .registry import register_pull
 
@@ -84,7 +85,14 @@ def register_core_sources():
                   lambda o: {**base(o), "name": o.name, "city": o.city, "is_active": o.is_active})
     register_pull("depots", lambda: Depot.all_objects.all(),
                   lambda o: {**base(o), "code": o.code, "name": o.name, "kind": o.kind, "is_default": o.is_default,
-                             "is_pickup_point": o.is_pickup_point, "is_active": o.is_active})
+                             "is_pickup_point": o.is_pickup_point, "is_active": o.is_active,
+                             "library": str(o.library_id) if o.library_id else None})
+    register_pull("libraries", lambda: Library.all_objects.all(),
+                  lambda o: {**base(o), "name": o.name, "location": o.location, "is_active": o.is_active})
+    # Prix propres aux librairies : le terminal applique celui de la librairie de son dépôt.
+    register_pull("library_prices", lambda: ArticleLibraryPrice.all_objects.all(),
+                  lambda o: {**base(o), "article": str(o.article_id), "library": str(o.library_id),
+                             "retail_price": o.retail_price, "wholesale_price": o.wholesale_price}, "catalog.view")
     register_pull("stock_levels", lambda: StockLevel.all_objects.all(),
                   lambda o: {**base(o), "article": str(o.article_id), "depot": str(o.depot_id),
                              "quantity": o.quantity, "reserved": o.reserved}, "stock.view")

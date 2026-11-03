@@ -2,16 +2,51 @@ from rest_framework import serializers
 
 from apps.catalog.models import Article, Kit
 
-from .models import Depot, KitAssembly, Location, StockAlert, StockLevel, StockMovement, StockTransfer, StockTransferLine
+from .models import (
+    Depot,
+    KitAssembly,
+    Library,
+    Location,
+    StockAlert,
+    StockLevel,
+    StockMovement,
+    StockTransfer,
+    StockTransferLine,
+)
+from .scoping import can_manage_depot
+
+
+class LibrarySerializer(serializers.ModelSerializer):
+    depot_count = serializers.IntegerField(read_only=True, default=0)
+    user_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = Library
+        fields = ["id", "name", "location", "is_active", "depot_count", "user_count", "sync_version", "updated_at"]
+        read_only_fields = ["sync_version", "updated_at"]
+        validators = []
+
+    def validate_name(self, value):
+        name = value.strip()
+        if not name:
+            raise serializers.ValidationError("Le libellé est obligatoire.")
+        duplicates = Library.objects.filter(name__iexact=name)
+        if self.instance is not None:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise serializers.ValidationError("Une librairie porte déjà ce libellé.")
+        return name
 
 
 class DepotSerializer(serializers.ModelSerializer):
     kind_label = serializers.CharField(source="get_kind_display", read_only=True)
+    library = serializers.PrimaryKeyRelatedField(queryset=Library.objects.all(), allow_null=True, required=False)
+    library_name = serializers.CharField(source="library.name", read_only=True, default=None)
 
     class Meta:
         model = Depot
-        fields = ["id", "code", "name", "kind", "kind_label", "address", "is_pickup_point", "is_default", "is_active",
-                  "sync_version", "updated_at"]
+        fields = ["id", "code", "name", "kind", "kind_label", "library", "library_name", "address", "is_pickup_point",
+                  "is_default", "is_active", "sync_version", "updated_at"]
         read_only_fields = ["sync_version", "updated_at"]
 
 
@@ -97,6 +132,12 @@ class AdjustmentSerializer(serializers.Serializer):
             raise serializers.ValidationError("La quantité ne peut pas être nulle.")
         return value
 
+    def validate_depot(self, value):
+        request = self.context.get("request")
+        if request is not None and not can_manage_depot(request.user, value):
+            raise serializers.ValidationError("Ce dépôt n'appartient pas à votre librairie.")
+        return value
+
 
 class StockTransferLineSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(required=False)
@@ -135,6 +176,12 @@ class StockTransferSerializer(serializers.ModelSerializer):
         target = attrs.get("to_depot", getattr(self.instance, "to_depot", None))
         if source == target:
             raise serializers.ValidationError({"to_depot": "Choisissez un dépôt d'arrivée différent."})
+        # Un employé ne fait que des transferts qui concernent sa librairie (envoi ou réception).
+        request = self.context.get("request")
+        user = request.user if request is not None else None
+        if user is not None and not (can_manage_depot(user, source) or can_manage_depot(user, target)):
+            raise serializers.ValidationError(
+                {"to_depot": "Le transfert doit partir de votre librairie ou y arriver."})
         lines = attrs.get("lines")
         if lines is not None:
             if not lines:

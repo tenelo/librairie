@@ -3,9 +3,8 @@
 Application de gestion de librairie pensée pour la Côte d'Ivoire (interface en français, locale `fr-CI`,
 fuseau `Africa/Abidjan`, montants en FCFA sans décimales) :
 
-- **backoffice** : PWA du personnel (caisse, stock, commandes en ligne, inventaires, statistiques, audit),
-  conçue pour fonctionner en ligne et hors connexion ;
-- **boutique** : PWA client (catalogue, kits scolaires, commande et retrait en librairie) ;
+- **backoffice** : PWA du personnel (caisse, stock, tontines scolaires, inventaires, statistiques, audit),
+  conçue pour fonctionner en ligne et hors connexion, pour une ou plusieurs librairies ;
 - **backend** : API Django REST, WebSocket (Channels), tâches Celery.
 
 L'arborescence complète et le schéma des modèles de données sont décrits dans
@@ -21,7 +20,7 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 | 4 | Couche hors connexion : base locale Dexie, outbox, `sync/push` et `sync/pull` idempotents, conflits, PIN hors ligne, écrans de synchronisation | **Livrée** |
 | 5 | Ventes et caisse : écran de caisse hors ligne, paiements multiples, reçus 58/80 mm et A4/A5, retours, ouverture/clôture, rapport Z, clients, crédit, avoirs, bons, fidélité | **Livrée** |
 | 6 | Inventaires : complet, partiel, tournant, gel du stock, comptage hors ligne multi-inventoristes, double comptage, rapport d'écarts Excel/PDF, validation avec ajustements | **Livrée** |
-| 7 | Boutique et commandes en ligne : catalogue, kits par établissement, panier, acompte Mobile Money (simulation), réservation, préparation par scan hors ligne, retrait par QR code en caisse, expiration Celery | **Livrée** |
+| 7 | Boutique et commandes en ligne : catalogue, kits par établissement, panier, acompte Mobile Money (simulation), réservation, préparation par scan hors ligne, retrait par QR code en caisse, expiration Celery | **Retirée** (PWA boutique supprimée) |
 | 8 | Notifications : cloche et temps réel (WebSocket), Web Push VAPID, e-mail, SMS/WhatsApp (console), préférences par événement et par canal | **Livrée** |
 | 9 | Statistiques et exports : tableau de bord, ventes, kits, stock, commandes en ligne, caisses, inventaires, exports Excel/PDF, rapports planifiés par e-mail | **Livrée** |
 | 10 | Audit complet et durcissement : traçage de toutes les écritures, journal infalsifiable et exportable, limitation de débit, en-têtes de sécurité, tests de cohérence des permissions, accessibilité | **Livrée** |
@@ -30,7 +29,11 @@ L'arborescence complète et le schéma des modèles de données sont décrits da
 Sous Windows, WeasyPrint (PDF) nécessite les bibliothèques GTK : sans elles, le bouton PDF répond par un
 message explicite et la version imprimable HTML reste disponible. L'image Docker les inclut.
 
-Toutes les phases sont livrées. Pour découvrir l'application avec des données réalistes, chargez les
+Toutes les phases sont livrées. Depuis : la PWA **boutique** (commandes en ligne) a été retirée, le
+**mot de passe** remplace le PIN (déverrouillage, autorisations du gérant), et le backoffice gère
+**plusieurs librairies** et la **tontine scolaire** (menu Tontines : souscriptions, versements, remise à la
+caisse, historique, export Excel). Le code Angular est dans `frontend/backoffice` et `frontend/shared`.
+ Pour découvrir l'application avec des données réalistes, chargez les
 [données de démonstration](#données-de-démonstration) puis suivez la
 [procédure de test du mode hors connexion](#procédure-de-test-du-mode-hors-connexion).
 
@@ -111,12 +114,10 @@ une info-bulle au survol.
 - **Préférences** par utilisateur, par événement et par canal (profil / « Mon compte ») ; écran
   Administration › Notifications : événements, destinataires, canaux par défaut, état du Web Push.
 
-**Tester** : ouvrir le backoffice et la boutique côte à côte, passer une commande dans la boutique : la
-cloche du backoffice s'incrémente aussitôt ; confirmer la commande : le client est notifié à son tour.
 
 ### Ce que contient la phase 7 (boutique et commandes en ligne)
 
-- **Boutique** (`frontend/projects/boutique`, port 4300 en développement) : catalogue avec recherche et
+- **Boutique** (PWA retirée depuis) : catalogue avec recherche et
   catégories, **kits scolaires par établissement et niveau** (contenu détaillé), disponibilité affichée
   (en stock / stock faible / indisponible) sur les points de retrait, panier conservé dans le navigateur,
   choix du point de retrait, créneau souhaité, commentaire, accord pour une commande partielle,
@@ -145,9 +146,6 @@ cloche du backoffice s'incrémente aussitôt ; confirmer la commande : le client
   ligne ; la commande devient une vente du canal « en ligne » avec reçu, le serveur vérifie que les
   articles correspondent à la commande.
 
-**Tester** : `npm run start:boutique` (ou `npx ng serve boutique`), créer un compte, commander, puis dans
-le backoffice : Commandes en ligne › À confirmer › Confirmer, Préparer (scanner les articles),
-« Commande prête », et à la caisse « Retrait commande » avec le code affiché dans la boutique.
 
 ### Ce que contient la phase 6 (inventaires)
 
@@ -181,7 +179,7 @@ quantités (y compris hors ligne), « Terminer les comptages (revue) », puis «
   remise. Raccourcis : **F2** recherche, **F4** mise en attente, **F8** client, **F9** encaisser.
 - **Paiements multiples** : espèces (monnaie à rendre et billets proposés), Orange Money, MTN MoMo,
   Moov Money, Wave (référence obligatoire), carte, crédit client, bon d'achat, avoir.
-- **Remise au-delà du plafond du rôle** : autorisation d'un responsable par PIN (en ligne ou hors ligne).
+- **Remise au-delà du plafond du rôle** : autorisation d'un responsable par mot de passe.
 - **Reçu imprimé à la validation** : ticket 58 / 80 mm ou facture A5 / A4 (logo, NCC, caissier, terminal,
   lignes, remises, paiements, monnaie, QR code du numéro, pied de page), réimpression « DUPLICATA »
   tracée, envoi du récapitulatif par WhatsApp. Couche `PrinterService` : impression navigateur ou
@@ -221,12 +219,12 @@ file ; elle arrive sur le serveur au retour du réseau.
   tracés dans **Synchronisation › Conflits** et dans l'audit (les prix et fiches articles restent
   modifiables uniquement en ligne).
 - **Authentification hors ligne** : après une connexion en ligne, le profil et les jetons sont gardés
-  sur le terminal ; le PIN (vérifié par le serveur, conservé haché PBKDF2) permet de reprendre la main
+  sur le terminal ; le mot de passe (empreinte PBKDF2 conservée localement) permet de reprendre la main
   hors ligne pendant la durée maximale paramétrée (72 h par défaut) et à plusieurs caissiers de se
   relayer (menu utilisateur › « Changer d'utilisateur »).
 
 **Tester le hors ligne** : ouvrir le backoffice compilé (Docker ou `ng build` + serveur HTTPS/localhost),
-se connecter une fois en ligne en saisissant son PIN, puis couper le réseau (DevTools › Network ›
+se connecter une fois en ligne, puis couper le réseau (DevTools › Network ›
 Offline) : enregistrer une perte ou une réception, constater « 1 en attente », rétablir le réseau et
 vérifier le mouvement dans **Stock › Mouvements**.
 
@@ -296,7 +294,6 @@ vérifier le mouvement dans **Stock › Mouvements**.
   indicateurs permanents (réseau, opérations en attente, dernière synchronisation), tableau de bord,
   profil (mot de passe, PIN), administration des utilisateurs, matrice rôles × permissions, terminaux,
   paramètres, journal d'audit et connexions.
-- Boutique : accueil, inscription et connexion client par téléphone, compte.
 
 ## Installation locale (sans Docker)
 
@@ -326,7 +323,6 @@ L'API répond sur http://127.0.0.1:8000/api/ et la documentation sur http://127.
 cd frontend
 npm install
 npm run start:backoffice        # http://localhost:4200
-npm run start:boutique          # http://localhost:4300
 ```
 
 Le serveur de développement relaie `/api`, `/ws`, `/uploads` et `/admin` vers Django
@@ -338,7 +334,7 @@ statique.
 
 ```bash
 cd backend && python -m pytest          # pytest + pytest-django
-cd frontend && npm test                 # Jasmine/Karma, Chrome headless (shared, backoffice, boutique)
+cd frontend && npm test                 # Jasmine/Karma, Chrome headless (shared, backoffice)
 ```
 
 ## Données de démonstration
@@ -352,7 +348,7 @@ La commande crée (sans rien écraser, et sans effet si elle a déjà été exé
 
 - un catalogue d'environ 190 articles de librairie ivoirienne (cahiers, écriture, géométrie, papeterie,
   manuels scolaires du CP1 à la Terminale, services de photocopie et de reliure), avec codes-barres
-  internes, emplacements et seuils d'alerte, publiés sur la boutique ;
+  internes, emplacements et seuils d'alerte ;
 - **54 kits scolaires** (CP1 → Terminale A, C, D) pour 3 établissements fictifs d'Abidjan, à prix calculé
   avec remise ;
 - 4 fournisseurs, 46 clients, un stock initial puis des réassorts hebdomadaires (réceptions au CMP) ;
@@ -361,7 +357,7 @@ La commande crée (sans rien écraser, et sans effet si elle a déjà été exé
 - 10 commandes en ligne à tous les statuts (reçue, confirmée, en préparation, prête, retirée, annulée,
   expirée).
 
-Comptes de démonstration (mot de passe commun **`Demo-Librairie-2026`**, PIN **`2026`**) :
+Comptes de démonstration (mot de passe commun **`Demo-Librairie-2026`**) :
 
 | Identifiant | Rôle |
 |---|---|
@@ -370,7 +366,6 @@ Comptes de démonstration (mot de passe commun **`Demo-Librairie-2026`**, PIN **
 | `magasinier` | Magasinier |
 | `preparateur` | Préparateur |
 | `inventoriste` | Inventoriste |
-| `0701000000` à `0701000005` | Clients de la boutique (connexion par téléphone) |
 
 Ces comptes sont destinés aux essais : supprimez-les ou changez leurs mots de passe avant une mise en
 service. Les terminaux `C01`, `C02` et `T01` sont créés vides pour les essais en direct.
@@ -378,18 +373,17 @@ service. Les terminaux `C01`, `C02` et `T01` sont créés vides pour les essais 
 ## Procédure de test du mode hors connexion
 
 1. **Préparer le poste** : connectez-vous au backoffice (par exemple `caissier1`), associez le poste au
-   terminal `C01` (Administration › Terminaux, compte administrateur) et définissez un PIN dans
-   **Mon profil**. Ouvrez la caisse (Caisse › Ouverture / Clôture) et attendez la fin de la première
+   terminal `C01` (Administration › Terminaux, compte administrateur). Ouvrez la caisse (Caisse › Ouverture / Clôture) et attendez la fin de la première
    synchronisation (pastille « 0 en attente »).
 2. **Couper le réseau** : DevTools › Network › *Offline* (ou débrancher le Wi-Fi). La pastille passe à
    « Hors ligne ».
-3. **Reprendre la session par PIN** : « Changer d'utilisateur » dans le menu du compte, puis
-   déverrouillage par PIN (fonctionne sans serveur, dans la limite de la durée hors ligne autorisée).
+3. **Reprendre la session par mot de passe** : « Changer d'utilisateur » dans le menu du compte, puis
+   déverrouillage par mot de passe (fonctionne sans serveur, dans la limite de la durée hors ligne autorisée).
 4. **Vendre** : un kit scolaire et des articles simples, paiement mixte espèces + Orange Money (avec une
    référence), impression du reçu. Le numéro de reçu `C01-AAAAMMJJ-0001` est attribué localement et la
    vente apparaît dans Synchronisation › File d'attente.
 5. **Compter** : Inventaires › Mes comptages (un inventaire doit avoir été démarré avant la coupure) ;
-   **réceptionner** : Achats › Réceptions ; **préparer** une commande en ligne déjà téléchargée.
+   **réceptionner** : Achats › Réceptions .
 6. **Rétablir le réseau** : la file se vide automatiquement (ou bouton de synchronisation). Vérifiez
    l'absence de doublon (Caisse › Historique), le stock serveur (Stock › État des stocks), les comptages
    et le journal d'audit : chaque opération porte l'utilisateur, le terminal, la date client et la date
@@ -407,13 +401,12 @@ docker compose up -d --build
 ```
 
 Services : `postgres` (16), `redis` (7), `backend` (Gunicorn + workers Uvicorn, ASGI : HTTP et WebSocket),
-`celery_worker`, `celery_beat`, `frontend` (les deux PWA compilées, servies par nginx) et `nginx`
+`celery_worker`, `celery_beat`, `frontend` (la PWA backoffice compilée, servie par nginx) et `nginx`
 (reverse proxy). Au démarrage, le backend applique les migrations, collecte les fichiers statiques et
 crée l'administrateur défini par `ADMIN_USERNAME` / `ADMIN_PASSWORD` ; avec `SEED_DEMO=1`, il charge
 aussi les données de démonstration.
 
 - Backoffice : http://localhost (port `BACKOFFICE_PORT`)
-- Boutique : http://localhost:8081 (port `BOUTIQUE_PORT`)
 - Admin Django : http://localhost/admin/
 
 ## Variables d'environnement
@@ -442,8 +435,8 @@ HTTPS (ou sur `localhost`) et avec l'application construite (`npm run build`, se
 
 ## Déploiement HTTPS sur un VPS (Certbot)
 
-Une PWA ne s'installe et n'active son service worker qu'en HTTPS. Exemple avec deux sous-domaines
-`gestion.ma-librairie.ci` (backoffice) et `boutique.ma-librairie.ci` (boutique) pointant vers le VPS :
+Une PWA ne s'installe et n'active son service worker qu'en HTTPS. Exemple avec le sous-domaine
+`gestion.ma-librairie.ci` (backoffice) pointant vers le VPS :
 
 1. Installer Docker et le plugin Compose sur le VPS, cloner le dépôt, préparer `.env` et `backend/.env`
    (`DJANGO_ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` avec les domaines en `https://`,
@@ -454,7 +447,7 @@ Une PWA ne s'installe et n'active son service worker qu'en HTTPS. Exemple avec d
    ```bash
    docker run --rm -v "$PWD/nginx/certbot/conf:/etc/letsencrypt" \
      -v "$PWD/nginx/certbot/www:/var/www/certbot" certbot/certbot certonly --webroot \
-     -w /var/www/certbot -d gestion.ma-librairie.ci -d boutique.ma-librairie.ci \
+     -w /var/www/certbot -d gestion.ma-librairie.ci \
      --email admin@ma-librairie.ci --agree-tos --no-eff-email
    ```
 
@@ -490,7 +483,6 @@ Chaque poste (caisse, tablette) doit être associé à un terminal : son code pr
 | Magasinier | Stock, transferts, assemblage de kits, réceptions |
 | Préparateur | Préparation des commandes en ligne |
 | Inventoriste | Comptages d'inventaire |
-| Client | Boutique en ligne uniquement |
 
 La commande `python manage.py sync_roles` ajoute les permissions manquantes après une mise à jour ;
 `--reset` rétablit la matrice par défaut.

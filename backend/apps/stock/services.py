@@ -139,11 +139,16 @@ class CardLine:
     balance: int
 
 
-def stock_card(article, depot=None, limit=500):
-    """Fiche de stock : mouvements (hors réservations) du plus ancien au plus récent avec solde progressif."""
+def stock_card(article, depot=None, limit=500, depot_ids=None):
+    """Fiche de stock : mouvements (hors réservations) du plus ancien au plus récent avec solde progressif.
+
+    `depot_ids` limite la fiche à un ensemble de dépôts (ceux qu'un employé peut consulter).
+    """
     movements = StockMovement.objects.filter(article=article).exclude(kind__in=StockMovement.RESERVATION_KINDS)
     if depot is not None:
         movements = movements.filter(depot=depot)
+    elif depot_ids is not None:
+        movements = movements.filter(depot_id__in=depot_ids)
     movements = list(movements.select_related("depot", "user").order_by("occurred_at", "created_at"))
     balance, lines = 0, []
     for movement in movements:

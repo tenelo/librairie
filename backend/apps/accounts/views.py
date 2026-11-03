@@ -28,6 +28,7 @@ from .serializers import (
     SetPinSerializer,
     TokenPairSerializer,
     UserSerializer,
+    VerifyPasswordSerializer,
     VerifyPinSerializer,
 )
 
@@ -200,6 +201,42 @@ class SetPinView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class VerifyPasswordView(APIView):
+    """Vérifie l'identifiant et le mot de passe d'un responsable, par exemple pour autoriser une remise
+    ou un retour à la caisse (l'accord du gérant se fait par mot de passe)."""
+
+    permission_classes = [IsStaffMember]
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=VerifyPasswordSerializer,
+        responses=inline_serializer(
+            "VerifyPasswordResult",
+            {
+                "valid": serializers.BooleanField(),
+                "has_permission": serializers.BooleanField(),
+                "user": ProfileSerializer(allow_null=True),
+            },
+        ),
+    )
+    def post(self, request):
+        serializer = VerifyPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        target = User.objects.get_by_identifier(data["username"])
+        if target is None or not target.is_active or not target.check_password(data["password"]):
+            log_event(AuditLog.Action.LOGIN_FAILED, request=request, entity="User",
+                      entity_id=target.id if target else "",
+                      description=f"Mot de passe d'autorisation invalide pour {data['username']}")
+            return Response({"valid": False, "has_permission": False, "user": None})
+        permission = data.get("permission") or ""
+        has_permission = target.has_app_perm(permission) if permission else True
+        log_event(AuditLog.Action.PIN_UNLOCK, request=request, entity="User", entity_id=target.id,
+                  description=f"Mot de passe de {target.username} vérifié"
+                  + (f" pour {permission}" if permission else ""))
+        return Response({"valid": True, "has_permission": has_permission, "user": ProfileSerializer(target).data})
+
+
 class VerifyPinView(APIView):
     """Vérifie le PIN d'un utilisateur, par exemple pour qu'un gérant autorise une remise en ligne."""
 
@@ -288,12 +325,12 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Creat
     serializer_class = UserSerializer
     permission_classes = [HasAppPermission]
     required_permissions = "accounts.manage_users"
-    filterset_fields = ["role__code", "is_active"]
+    filterset_fields = ["role__code", "is_active", "library"]
     search_fields = ["username", "first_name", "last_name", "phone", "email"]
     ordering_fields = ["username", "last_name", "last_login", "date_joined"]
 
     def get_queryset(self):
-        return User.objects.select_related("role").all()
+        return User.objects.select_related("role", "library").all()
 
     def perform_create(self, serializer):
         user = serializer.save()
@@ -303,11 +340,13 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Creat
             entity="User",
             entity_id=user.id,
             description=f"Création de l'utilisateur {user.username}",
-            new_values={"username": user.username, "role": user.role_code},
+            new_values={"username": user.username, "role": user.role_code,
+                        "library": user.library.name if user.library_id else None},
         )
 
     def perform_update(self, serializer):
-        before = {"role": serializer.instance.role_code, "is_active": serializer.instance.is_active}
+        before = {"role": serializer.instance.role_code, "is_active": serializer.instance.is_active,
+                  "library": serializer.instance.library.name if serializer.instance.library_id else None}
         user = serializer.save()
         log_event(
             AuditLog.Action.UPDATE,
@@ -316,7 +355,8 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Creat
             entity_id=user.id,
             description=f"Modification de l'utilisateur {user.username}",
             old_values=before,
-            new_values={"role": user.role_code, "is_active": user.is_active},
+            new_values={"role": user.role_code, "is_active": user.is_active,
+                        "library": user.library.name if user.library_id else None},
         )
 
     @extend_schema(request=None, responses=UserSerializer)
@@ -358,7 +398,7 @@ class DeviceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
                     mixins.UpdateModelMixin, viewsets.GenericViewSet):
     """Terminaux. Un terminal ne se supprime pas (ses reçus portent son code) : il se désactive."""
 
-    queryset = Device.objects.select_related("registered_by").all()
+    queryset = Device.objects.select_related("registered_by", "depot__library").all()
     serializer_class = DeviceSerializer
     permission_classes = [IsStaffMember, HasAppPermission]
     required_permissions = {"check": None, "*": "accounts.manage_devices"}

@@ -13,7 +13,7 @@ librairie/
 │   └── ARCHITECTURE.md                 # ce document
 ├── .env.example                        # variables de docker compose
 ├── nginx/
-│   ├── conf.d/librairie.conf           # reverse proxy HTTP : :80 backoffice, :8081 boutique
+│   ├── conf.d/librairie.conf           # reverse proxy HTTP : :80 backoffice
 │   ├── snippets/librairie-backend.conf # /api, /ws, /admin, /static, /uploads vers Django
 │   └── https.conf.example              # configuration HTTPS de production (Certbot, voir README)
 ├── backend/
@@ -58,37 +58,33 @@ librairie/
 │   └── tests/                          # tests transverses (scénarios multi-apps)
 └── frontend/
     ├── Dockerfile                      # build Angular puis nginx
-    ├── nginx.conf                      # sert les deux PWA (fallback index.html)
+    ├── nginx.conf                      # sert la PWA backoffice (fallback index.html)
     ├── proxy.conf.mjs                  # proxy du serveur de développement vers Django
     ├── .env.example
     ├── angular.json
     ├── package.json
     ├── tsconfig.json
-    └── projects/
-        ├── shared/                     # bibliothèque @librairie/shared
-        │   └── src/
-        │       ├── public-api.ts
-        │       └── lib/
-        │           ├── config/         # jeton API_BASE_URL
-        │           ├── models/         # interfaces TypeScript (User, Role, Device…)
-        │           ├── auth/           # AuthService, intercepteur JWT, gardes, stockage jetons
-        │           ├── network/        # NetworkStatusService (en ligne / hors ligne)
-        │           ├── pwa/            # UpdateService (SwUpdate + bannière)
-        │           ├── format/         # pipe FCFA (fr-CI, XOF sans décimales), dates Africa/Abidjan
-        │           └── ui/             # composants communs (bannière mise à jour, indicateur réseau)
-        ├── backoffice/                 # PWA du personnel
-        │   ├── ngsw-config.json
-        │   ├── public/manifest.webmanifest + icônes
-        │   └── src/app/
-        │       ├── app.config.ts / app.routes.ts
-        │       ├── layout/             # shell : barre d'outils, menu latéral, indicateurs
-        │       ├── navigation/         # définition des 12 menus + permissions requises
-        │       ├── auth/               # écran de connexion
-        │       ├── pages/              # tableau de bord + pages par module (phases suivantes)
-        │       └── offline/            # Dexie, outbox, sync (phase 4)
-        └── boutique/                   # PWA client
-            ├── ngsw-config.json
-            └── src/app/                # layout client, catalogue, panier, compte (phase 7)
+    ├── shared/                         # bibliothèque @librairie/shared
+    │   └── src/
+    │       ├── public-api.ts
+    │       └── lib/
+    │           ├── config/         # jeton API_BASE_URL
+    │           ├── models/         # interfaces TypeScript (User, Role, Device…)
+    │           ├── auth/           # AuthService, intercepteur JWT, gardes, stockage jetons
+    │           ├── network/        # NetworkStatusService (en ligne / hors ligne)
+    │           ├── pwa/            # UpdateService (SwUpdate + bannière)
+    │           ├── format/         # pipe FCFA (fr-CI, XOF sans décimales), dates Africa/Abidjan
+    │           └── ui/             # composants communs (bannière mise à jour, indicateur réseau)
+    └── backoffice/                     # PWA du personnel
+        ├── ngsw-config.json
+        ├── public/manifest.webmanifest + icônes
+        └── src/app/
+            ├── app.config.ts / app.routes.ts
+            ├── layout/             # shell : barre d'outils, menu latéral, indicateurs
+            ├── navigation/         # définition des 12 menus + permissions requises
+            ├── auth/               # écran de connexion
+            ├── pages/              # tableau de bord + pages par module (phases suivantes)
+            └── offline/            # Dexie, outbox, sync (phase 4)
 ```
 
 ## 2. Conventions communes

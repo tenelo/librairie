@@ -9,16 +9,25 @@ from rest_framework.views import APIView
 
 from apps.core.pdf import PdfUnavailable
 from apps.core.permissions import HasAppPermission, IsStaffMember
-from apps.stock.models import Depot
+from apps.stock.models import Depot, Library
 
 from . import exports, scheduling, services
 from .models import ScheduledReport
 
 PERIOD_PARAMS = [
     OpenApiParameter("date_from", OpenApiTypes.DATE), OpenApiParameter("date_to", OpenApiTypes.DATE),
-    OpenApiParameter("depot", OpenApiTypes.UUID),
+    OpenApiParameter("depot", OpenApiTypes.UUID), OpenApiParameter("library", OpenApiTypes.UUID),
     OpenApiParameter("export", str, enum=["xlsx", "pdf"], description="Télécharger le rapport"),
 ]
+
+
+def report_library(request):
+    """Librairie des chiffres : celle de l'employé (imposée), sinon celle choisie par l'administrateur."""
+    restricted = request.user.restricted_library
+    if restricted is not None:
+        return restricted
+    value = request.query_params.get("library")
+    return Library.objects.filter(pk=value).first() if value else None
 
 
 class DashboardView(APIView):
@@ -28,11 +37,15 @@ class DashboardView(APIView):
     required_permissions = "dashboard.view"
 
     @extend_schema(parameters=[OpenApiParameter("scope", str, enum=["today", "week", "month"]),
-                               OpenApiParameter("depot", OpenApiTypes.UUID)], responses=OpenApiTypes.OBJECT)
+                               OpenApiParameter("depot", OpenApiTypes.UUID),
+                               OpenApiParameter("library", OpenApiTypes.UUID)], responses=OpenApiTypes.OBJECT)
     def get(self, request):
+        library = report_library(request)
         depot = Depot.objects.filter(pk=request.query_params.get("depot")).first() \
             if request.query_params.get("depot") else None
-        data = services.dashboard(request.query_params.get("scope", "today"), depot)
+        if depot is not None and library is not None and depot.library_id != library.pk:
+            depot = None
+        data = services.dashboard(request.query_params.get("scope", "today"), depot, library)
         if not request.user.has_app_perm("stats.view"):
             # Sans accès aux statistiques : pas de marge ni de détail par article.
             data["kpis"] = [k for k in data["kpis"] if k["key"] != "margin"]
@@ -50,7 +63,7 @@ class ReportView(APIView):
     def get(self, request, name):
         if name not in services.REPORTS:
             raise NotFound("Rapport inconnu.")
-        data = services.build(name, request.query_params)
+        data = services.build(name, request.query_params, library=report_library(request))
         export = request.query_params.get("export")
         if export == "xlsx":
             response = HttpResponse(exports.to_xlsx(data), content_type=exports.XLSX)
@@ -99,7 +112,12 @@ class ScheduledReportViewSet(viewsets.ModelViewSet):
     queryset = ScheduledReport.objects.all()
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        # Un employé ne programme que des rapports de sa librairie.
+        restricted = self.request.user.restricted_library
+        filters = dict(serializer.validated_data.get("filters") or {})
+        if restricted is not None:
+            filters["library"] = str(restricted.pk)
+        serializer.save(created_by=self.request.user, filters=filters)
 
     @extend_schema(request=None, responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["post"])

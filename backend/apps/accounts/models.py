@@ -76,6 +76,11 @@ class User(AbstractUser):
         help_text="Vide : valeur des paramètres de la librairie.",
     )
     must_change_password = models.BooleanField("doit changer son mot de passe", default=False)
+    library = models.ForeignKey(
+        "stock.Library", verbose_name="librairie", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="users",
+        help_text="Librairie de l'employé (il ne gère que celle-ci). Vide : toutes les librairies.",
+    )
 
     objects = LibraryUserManager()
 
@@ -98,6 +103,16 @@ class User(AbstractUser):
     @property
     def is_client(self):
         return self.role_code == CLIENT
+
+    @property
+    def restricted_library(self):
+        """Librairie à laquelle l'utilisateur est limité, ou None s'il voit toutes les librairies.
+
+        L'administrateur voit tout, même s'il est rattaché à une librairie.
+        """
+        if self.is_admin_role or not self.library_id:
+            return None
+        return self.library
 
     def get_app_permissions(self):
         """Codes de permission effectifs (mis en cache sur l'instance)."""

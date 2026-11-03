@@ -17,7 +17,7 @@ from apps.sales.models import Sale
 from apps.stock.models import Depot
 
 pytestmark = pytest.mark.django_db
-FRONTEND = Path(__file__).resolve().parents[4] / "frontend" / "projects" / "backoffice" / "src" / "app"
+FRONTEND = Path(__file__).resolve().parents[4] / "frontend" / "backoffice" / "src" / "app"
 
 
 def client_for(user):
