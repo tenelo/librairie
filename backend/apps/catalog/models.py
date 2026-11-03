@@ -329,3 +329,33 @@ class PriceHistory(models.Model):
     class Meta:
         ordering = ["-changed_at"]
         verbose_name = "historique de prix"
+
+
+class ArticleLibraryPrice(SyncModel):
+    """Prix propre à une librairie : remplace, pour cette librairie seulement, le prix du catalogue.
+
+    Le prix fixé par l'administrateur (sur l'article) s'applique partout ; une librairie autorisée
+    peut le remplacer pour ses ventes. Supprimer cette ligne rétablit le prix du catalogue.
+    """
+
+    article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="library_prices")
+    library = models.ForeignKey("stock.Library", verbose_name="librairie", on_delete=models.CASCADE,
+                                related_name="article_prices")
+    retail_price = models.PositiveBigIntegerField("prix de vente détail")
+    wholesale_price = models.PositiveBigIntegerField("prix de vente gros", null=True, blank=True)
+    changed_by = models.ForeignKey(
+        "accounts.User", verbose_name="modifié par", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["library", "article"]
+        verbose_name = "prix par librairie"
+        verbose_name_plural = "prix par librairie"
+        constraints = [
+            models.UniqueConstraint(fields=["article", "library"], condition=models.Q(is_deleted=False),
+                                    name="unique_article_price_per_library")
+        ]
+
+    def __str__(self):
+        return f"{self.article_id} @ {self.library_id} : {self.retail_price}"

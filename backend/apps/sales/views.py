@@ -15,6 +15,7 @@ from rest_framework.response import Response
 
 from apps.audit.mixins import AuditedViewSetMixin
 from apps.core.permissions import HasAppPermission, IsStaffMember
+from apps.stock.scoping import filter_by_depots, own_depot_ids
 
 from . import services
 from .models import CashSession, CreditNote, Payment, PaymentMethod, Sale, SaleLine, SaleReturn, Voucher
@@ -77,6 +78,7 @@ class SaleSerializer(serializers.ModelSerializer):
 
 
 class SaleFilter(django_filters.FilterSet):
+    library = django_filters.UUIDFilter(field_name="depot__library")
     date_from = django_filters.IsoDateTimeFilter(field_name="sold_at", lookup_expr="gte")
     date_to = django_filters.IsoDateTimeFilter(field_name="sold_at", lookup_expr="lte")
 
@@ -94,8 +96,10 @@ class SaleViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ["sold_at", "total"]
 
     def get_queryset(self):
-        return Sale.objects.select_related("cashier", "device", "customer", "depot").prefetch_related(
+        queryset = Sale.objects.select_related("cashier", "device", "customer", "depot").prefetch_related(
             "lines__article", "lines__return_lines", "payments__method")
+        # Un employé ne voit que les ventes de sa librairie.
+        return filter_by_depots(queryset, own_depot_ids(self.request.user))
 
     @extend_schema(parameters=[OpenApiParameter("number", str, required=True)], responses=SaleSerializer)
     @action(detail=False, methods=["get"], url_path="by-number")
@@ -122,12 +126,15 @@ class CashSessionSerializer(serializers.ModelSerializer):
 
 
 class CashSessionViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = CashSession.objects.select_related("device", "depot", "opened_by", "closed_by")
     serializer_class = CashSessionSerializer
     permission_classes = [IsStaffMember, HasAppPermission]
     required_permissions = {"*": "cash.z_report", "list": "cash.open_close", "retrieve": "cash.open_close",
                             "z_report": "cash.open_close"}
-    filterset_fields = ["device", "status", "depot"]
+    filterset_fields = ["device", "status", "depot", "depot__library"]
+
+    def get_queryset(self):
+        queryset = CashSession.objects.select_related("device", "depot", "opened_by", "closed_by")
+        return filter_by_depots(queryset, own_depot_ids(self.request.user))
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["get"], url_path="z-report")
@@ -149,11 +156,14 @@ class SaleReturnSerializer(serializers.ModelSerializer):
 
 
 class SaleReturnViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = SaleReturn.objects.select_related("sale", "user", "authorized_by", "credit_note")
     serializer_class = SaleReturnSerializer
     permission_classes = [IsStaffMember, HasAppPermission]
     required_permissions = "sales.view"
     search_fields = ["number", "sale__receipt_number"]
+
+    def get_queryset(self):
+        queryset = SaleReturn.objects.select_related("sale", "user", "authorized_by", "credit_note")
+        return filter_by_depots(queryset, own_depot_ids(self.request.user), field="sale__depot")
 
 
 class CreditNoteSerializer(serializers.ModelSerializer):

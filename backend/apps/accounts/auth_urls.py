@@ -8,6 +8,7 @@ from .views import (
     RefreshView,
     RegisterView,
     SetPinView,
+    VerifyPasswordView,
     VerifyPinView,
 )
 
@@ -20,4 +21,5 @@ urlpatterns = [
     path("me/password/", ChangePasswordView.as_view(), name="auth-change-password"),
     path("me/pin/", SetPinView.as_view(), name="auth-set-pin"),
     path("pin/verify/", VerifyPinView.as_view(), name="auth-verify-pin"),
+    path("password/verify/", VerifyPasswordView.as_view(), name="auth-verify-password"),
 ]

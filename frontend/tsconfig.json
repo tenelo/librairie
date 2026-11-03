@@ -12,7 +12,7 @@
     "isolatedModules": true,
     "experimentalDecorators": true,
     "paths": {
-      "@librairie/shared": ["./projects/shared/src/public-api.ts"]
+      "@librairie/shared": ["./shared/src/public-api.ts"]
     },
     "importHelpers": true,
     "target": "ES2022",
@@ -28,22 +28,16 @@
   "files": [],
   "references": [
     {
-      "path": "./projects/backoffice/tsconfig.app.json"
+      "path": "./backoffice/tsconfig.app.json"
     },
     {
-      "path": "./projects/backoffice/tsconfig.spec.json"
+      "path": "./backoffice/tsconfig.spec.json"
     },
     {
-      "path": "./projects/boutique/tsconfig.app.json"
+      "path": "./shared/tsconfig.lib.json"
     },
     {
-      "path": "./projects/boutique/tsconfig.spec.json"
-    },
-    {
-      "path": "./projects/shared/tsconfig.lib.json"
-    },
-    {
-      "path": "./projects/shared/tsconfig.spec.json"
+      "path": "./shared/tsconfig.spec.json"
     }
   ]
 }

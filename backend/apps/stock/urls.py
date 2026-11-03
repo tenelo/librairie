@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     DepotViewSet,
     KitAssemblyViewSet,
+    LibraryViewSet,
     LocationViewSet,
     StockAlertViewSet,
     StockLevelViewSet,
@@ -14,6 +15,7 @@ from .views import (
 )
 
 router = DefaultRouter()
+router.register("libraries", LibraryViewSet, basename="library")
 router.register("depots", DepotViewSet, basename="depot")
 router.register("locations", LocationViewSet, basename="location")
 router.register("levels", StockLevelViewSet, basename="stock-level")

@@ -18,8 +18,9 @@ class PaymentMethod(SyncModel):
         VOUCHER = "VOUCHER", "Bon d'achat"
         CREDIT_NOTE = "CREDIT_NOTE", "Avoir"
         DEPOSIT = "DEPOSIT", "Acompte en ligne"
+        TONTINE = "TONTINE", "Tontine scolaire"
 
-    code = models.CharField("code", max_length=20, unique=True)
+    code =models.CharField("code", max_length=20, unique=True)
     label = models.CharField("libellé", max_length=50)
     kind = models.CharField("type", max_length=15, choices=Kind.choices)
     requires_reference = models.BooleanField("référence de transaction obligatoire", default=False)
@@ -254,3 +255,97 @@ class LoyaltyEntry(SyncModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class Tontine(SyncModel):
+    """Tontine scolaire : le souscripteur paie les fournitures petit à petit, puis les retire.
+
+    Le montant à atteindre est fixé à la souscription (prix du jour des articles souscrits).
+    Chaque versement est encaissé en caisse ; le total versé est imputé, à la remise, sur la
+    vente des fournitures (moyen de paiement « Tontine scolaire »).
+    """
+
+    class Status(models.TextChoices):
+        OPEN = "OPEN", "En cours"
+        DELIVERED = "DELIVERED", "Fournitures remises"
+        CANCELLED = "CANCELLED", "Annulée"
+
+    number = models.CharField("numéro", max_length=30, unique=True)
+    subscriber_name = models.CharField("nom et prénoms du souscripteur", max_length=150)
+    subscriber_phone = models.CharField("téléphone", max_length=20, blank=True, db_index=True)
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, null=True, blank=True,
+                                 related_name="tontines")
+    depot = models.ForeignKey("stock.Depot", verbose_name="dépôt de remise", on_delete=models.PROTECT,
+                              related_name="+")
+    school_year = models.ForeignKey("catalog.SchoolYear", verbose_name="année scolaire", on_delete=models.PROTECT,
+                                    null=True, blank=True, related_name="tontines")
+    target_amount = models.PositiveBigIntegerField("montant à atteindre (FCFA)")
+    paid_amount = models.BigIntegerField("total versé", default=0)
+    used_amount = models.BigIntegerField("total imputé sur les ventes", default=0)
+    status = models.CharField("statut", max_length=10, choices=Status.choices, default=Status.OPEN)
+    notes = models.CharField("remarques", max_length=255, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    sale = models.ForeignKey(Sale, verbose_name="vente de remise", on_delete=models.PROTECT, null=True, blank=True,
+                             related_name="+")
+    delivered_at = models.DateTimeField("remise le", null=True, blank=True)
+    delivered_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="remise par", on_delete=models.PROTECT,
+                                     null=True, blank=True, related_name="+")
+    cancelled_at = models.DateTimeField("annulée le", null=True, blank=True)
+    cancelled_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="annulée par", on_delete=models.PROTECT,
+                                     null=True, blank=True, related_name="+")
+    cancel_reason = models.CharField("motif d'annulation", max_length=150, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "tontine scolaire"
+        verbose_name_plural = "tontines scolaires"
+
+    def __str__(self):
+        return self.number
+
+    @property
+    def available(self) -> int:
+        """Montant versé et pas encore imputé sur une vente."""
+        return self.paid_amount - self.used_amount
+
+    @property
+    def remaining(self) -> int:
+        """Reste à verser pour atteindre le montant prévu."""
+        return max(self.target_amount - self.paid_amount, 0)
+
+
+class TontineLine(SyncModel):
+    """Fourniture souscrite, au prix du jour de la souscription."""
+
+    tontine = models.ForeignKey(Tontine, on_delete=models.CASCADE, related_name="lines")
+    article = models.ForeignKey("catalog.Article", on_delete=models.PROTECT, related_name="+")
+    description = models.CharField("désignation", max_length=200)
+    quantity = models.PositiveIntegerField("quantité")
+    unit_price = models.PositiveBigIntegerField("prix unitaire")
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "created_at"]
+
+
+class TontinePayment(SyncModel):
+    """Versement (+) ou remboursement à l'annulation (−), encaissé sur une session de caisse."""
+
+    class Kind(models.TextChoices):
+        PAYMENT = "PAYMENT", "Versement"
+        REFUND = "REFUND", "Remboursement"
+
+    number = models.CharField("numéro de reçu", max_length=40, unique=True)
+    tontine = models.ForeignKey(Tontine, on_delete=models.PROTECT, related_name="payments")
+    kind = models.CharField("type", max_length=8, choices=Kind.choices, default=Kind.PAYMENT)
+    amount = models.BigIntegerField("montant (signé)")
+    method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT, related_name="+")
+    reference = models.CharField("référence de transaction", max_length=60, blank=True)
+    cash_session = models.ForeignKey(CashSession, on_delete=models.PROTECT, null=True, blank=True,
+                                     related_name="tontine_payments")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    paid_at = models.DateTimeField("date")
+
+    class Meta:
+        ordering = ["paid_at"]
+        verbose_name = "versement de tontine"

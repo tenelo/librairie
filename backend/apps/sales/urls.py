@@ -1,5 +1,6 @@
 from rest_framework.routers import DefaultRouter
 
+from .tontines import TontineViewSet
 from .views import (
     CashSessionViewSet,
     CreditNoteViewSet,
@@ -16,5 +17,6 @@ router.register("sessions", CashSessionViewSet, basename="cash-session")
 router.register("returns", SaleReturnViewSet, basename="sale-return")
 router.register("credit-notes", CreditNoteViewSet, basename="credit-note")
 router.register("vouchers", VoucherViewSet, basename="voucher")
+router.register("tontines", TontineViewSet, basename="tontine")
 
 urlpatterns = router.urls

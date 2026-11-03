@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
+from .library_prices import ArticleLibraryPriceViewSet
 from .views import (
     ArticleImportView,
     ArticleViewSet,
@@ -22,6 +23,7 @@ router.register("articles", ArticleViewSet, basename="article")
 router.register("levels", SchoolLevelViewSet, basename="school-level")
 router.register("school-years", SchoolYearViewSet, basename="school-year")
 router.register("kits", KitViewSet, basename="kit")
+router.register("library-prices", ArticleLibraryPriceViewSet, basename="library-price")
 
 urlpatterns = [
     path("import/articles/", ArticleImportView.as_view(), name="import-articles"),

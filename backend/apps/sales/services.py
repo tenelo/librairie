@@ -69,13 +69,31 @@ def price_at(article: Article, field: str, when) -> int | None:
     return int(Decimal(str(raw)))
 
 
-def catalog_unit_price(article: Article, quantity: int, when) -> tuple[int, str]:
-    """Prix catalogue applicable (détail, ou gros au-delà du seuil) à la date de la vente."""
+def library_price(article: Article, library):
+    """Prix propre à une librairie pour cet article, ou None (prix du catalogue)."""
+    if library is None:
+        return None
+    from apps.catalog.models import ArticleLibraryPrice
+
+    return ArticleLibraryPrice.objects.filter(article=article, library=library).first()
+
+
+def catalog_unit_price(article: Article, quantity: int, when, library=None) -> tuple[int, str]:
+    """Prix applicable (détail, ou gros au-delà du seuil) à la date de la vente.
+
+    Si la librairie de la vente a fixé son propre prix pour l'article, il remplace celui du catalogue.
+    """
     wholesale = price_at(article, "wholesale_price", when)
     threshold = price_at(article, "wholesale_min_qty", when)
+    retail = price_at(article, "retail_price", when) or 0
+    override = library_price(article, library)
+    if override is not None:
+        retail = int(override.retail_price)
+        if override.wholesale_price is not None:
+            wholesale = int(override.wholesale_price)
     if wholesale is not None and threshold and quantity >= threshold:
         return wholesale, SaleLine.PriceKind.WHOLESALE
-    return price_at(article, "retail_price", when) or 0, SaleLine.PriceKind.RETAIL
+    return retail, SaleLine.PriceKind.RETAIL
 
 
 # --- Stock -------------------------------------------------------------------------------------
@@ -170,16 +188,18 @@ def cash_movement(context, payload):
 
 def expected_cash(session: CashSession) -> int:
     """Espèces attendues = fond + encaissements espèces − monnaie rendue − remboursements espèces
-    + règlements de crédit en espèces + entrées − sorties."""
+    + règlements de crédit en espèces + versements de tontine en espèces (nets des remboursements)
+    + entrées − sorties."""
     cash = PaymentMethod.Kind.CASH
     payments = Payment.objects.filter(sale__cash_session=session, sale__status=Sale.Status.COMPLETED,
                                       method__kind=cash).aggregate(t=Sum("amount"))["t"] or 0
     change = session.sales.filter(status=Sale.Status.COMPLETED).aggregate(t=Sum("change_due"))["t"] or 0
     refunds = session.returns.filter(refund_mode=SaleReturn.RefundMode.CASH).aggregate(t=Sum("total"))["t"] or 0
     repayments = -(session.repayments.filter(method__kind=cash).aggregate(t=Sum("amount"))["t"] or 0)
+    tontines = session.tontine_payments.filter(method__kind=cash).aggregate(t=Sum("amount"))["t"] or 0
     ins = session.movements.filter(kind=CashMovement.Kind.IN).aggregate(t=Sum("amount"))["t"] or 0
     outs = session.movements.filter(kind=CashMovement.Kind.OUT).aggregate(t=Sum("amount"))["t"] or 0
-    return session.opening_float + payments - change - refunds + repayments + ins - outs
+    return session.opening_float + payments - change - refunds + repayments + tontines + ins - outs
 
 
 def close_session(context, payload):
@@ -231,6 +251,8 @@ def z_report(session: CashSession) -> dict:
         "cash_in": session.movements.filter(kind="IN").aggregate(t=Sum("amount"))["t"] or 0,
         "cash_out": session.movements.filter(kind="OUT").aggregate(t=Sum("amount"))["t"] or 0,
         "opening_float": session.opening_float,
+        "tontine_in": session.tontine_payments.filter(amount__gt=0).aggregate(t=Sum("amount"))["t"] or 0,
+        "tontine_refunds": -(session.tontine_payments.filter(amount__lt=0).aggregate(t=Sum("amount"))["t"] or 0),
         "expected_cash": session.expected_cash if session.status == "CLOSED" else expected_cash(session),
         "counted_cash": session.counted_cash, "variance": session.variance, "denominations": session.denominations,
     }
@@ -282,6 +304,16 @@ def create_sale(context, payload) -> Sale:
         online_order = order_for_sale(payload, depot)
         customer = online_order.customer
         order_prices = {str(line.article_id): line.unit_price for line in online_order.lines.all() if line.quantity}
+    # Remise des fournitures d'une tontine scolaire : client et prix de la souscription, versements imputables.
+    tontine = None
+    if payload.get("tontine"):
+        if online_order is not None:
+            raise ValidationError({"tontine": "Une vente ne retire pas à la fois une commande et une souscription."})
+        from .tontines import tontine_for_sale
+
+        tontine = tontine_for_sale(payload["tontine"], depot)
+        customer = tontine.customer
+        order_prices = {str(line.article_id): line.unit_price for line in tontine.lines.all()}
 
     # 1. Lignes : contrôles arithmétiques et prix catalogue en vigueur.
     lines_data, price_flags, gross, subtotal, line_discounts = [], [], 0, 0, 0
@@ -303,7 +335,7 @@ def create_sale(context, payload) -> Sale:
             expected_price, price_kind = expected.price, SaleLine.PriceKind.RETAIL
             trace = expected.adjustments
         else:
-            expected_price, price_kind = catalog_unit_price(article, quantity, sold_at)
+            expected_price, price_kind = catalog_unit_price(article, quantity, sold_at, depot.library)
             trace = []
         if str(article.pk) in order_prices:
             expected_price, price_kind = order_prices[str(article.pk)], SaleLine.PriceKind.RETAIL
@@ -324,6 +356,14 @@ def create_sale(context, payload) -> Sale:
             sold[str(row[0].pk)] += row[1]
         if +ordered != +sold:
             raise ValidationError({"lines": f"Les articles ne correspondent pas à la commande {online_order.number}."})
+    if tontine is not None and order_prices:
+        subscribed, sold = Counter(), Counter()
+        for tontine_line in tontine.lines.all():
+            subscribed[str(tontine_line.article_id)] += tontine_line.quantity
+        for row in lines_data:
+            sold[str(row[0].pk)] += row[1]
+        if subscribed != sold:
+            raise ValidationError({"lines": f"Les articles ne correspondent pas à la souscription {tontine.number}."})
     if _int(payload.get("subtotal", subtotal), "subtotal") != subtotal:
         raise ValidationError({"subtotal": "Le sous-total ne correspond pas aux lignes."})
 
@@ -351,7 +391,7 @@ def create_sale(context, payload) -> Sale:
                                                f"sans autorisation valide d'un responsable."})
 
     # 4. Paiements.
-    payments_data, paid, cash_paid, deposit_used = [], 0, 0, 0
+    payments_data, paid, cash_paid, deposit_used, tontine_used = [], 0, 0, 0, 0
     for item in payload.get("payments") or []:
         method = PaymentMethod.objects.filter(code=item.get("method"), is_active=True).first()
         amount = _int(item.get("amount"), "amount")
@@ -375,12 +415,23 @@ def create_sale(context, payload) -> Sale:
             if online_order is None:
                 raise ValidationError({"payments": "L'acompte en ligne ne s'impute que sur le retrait d'une commande."})
             deposit_used += amount
+        if method.kind == PaymentMethod.Kind.TONTINE:
+            if tontine is None:
+                raise ValidationError({"payments": f"Le moyen « {method.label} » ne s'utilise que pour remettre "
+                                                   f"les fournitures d'une souscription."})
+            tontine_used += amount
         if method.kind == PaymentMethod.Kind.CASH:
             cash_paid += amount
         paid += amount
         payments_data.append((method, amount, reference, voucher, credit_note))
     if online_order is not None and deposit_used > online_order.deposit_paid:
         raise ValidationError({"payments": f"Acompte imputé supérieur à l'acompte payé ({online_order.deposit_paid} FCFA)."})
+    if tontine is not None:
+        # Tout ce qui a été versé s'impute (dans la limite du total) : rien ne reste sur une tontine remise.
+        expected_use = min(tontine.available, total)
+        if tontine_used != expected_use:
+            raise ValidationError({"payments": f"Imputez les {expected_use} FCFA déjà versés sur la souscription "
+                                               f"{tontine.number}."})
     change = paid - total
     if change < 0:
         raise ValidationError({"payments": f"Paiement insuffisant : {paid} FCFA pour {total} FCFA."})
@@ -442,6 +493,10 @@ def create_sale(context, payload) -> Sale:
         from apps.orders.services import complete_pickup
 
         complete_pickup(online_order, sale, context.user)
+    if tontine is not None:
+        from .tontines import complete_tontine
+
+        complete_tontine(tontine, sale, tontine_used, context.user)
     refresh_alerts({a.pk: a for a in touched}.values())
     log_event(AuditLog.Action.CREATE, user=context.user, device=context.device, entity="Sale", entity_id=sale.pk,
               description=f"Vente {number} : {total} FCFA", client_timestamp=context.client_timestamp,

@@ -12,6 +12,29 @@ from django.db import models
 from apps.core.models import SyncModel
 
 
+class Library(SyncModel):
+    """Librairie (point de vente) d'un même propriétaire.
+
+    Chaque librairie a ses dépôts, ses terminaux et son personnel. Un dépôt sans librairie est
+    l'entrepôt général, commun à toutes : le stock global est la somme de tous les dépôts.
+    """
+
+    name = models.CharField("libellé", max_length=100)
+    location = models.CharField("quartier / commune", max_length=150, blank=True)
+    is_active = models.BooleanField("active", default=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "librairie"
+        constraints = [
+            models.UniqueConstraint(fields=["name"], condition=models.Q(is_deleted=False),
+                                    name="unique_library_name")
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.location})" if self.location else self.name
+
+
 class Depot(SyncModel):
     class Kind(models.TextChoices):
         BOUTIQUE = "BOUTIQUE", "Magasin / boutique"
@@ -20,6 +43,10 @@ class Depot(SyncModel):
     code = models.CharField("code", max_length=10, unique=True)
     name = models.CharField("nom", max_length=100)
     kind = models.CharField("type", max_length=10, choices=Kind.choices, default=Kind.BOUTIQUE)
+    library = models.ForeignKey(
+        Library, verbose_name="librairie", on_delete=models.PROTECT, null=True, blank=True, related_name="depots",
+        help_text="Vide : entrepôt général, commun à toutes les librairies.",
+    )
     address = models.CharField("adresse", max_length=255, blank=True)
     is_pickup_point = models.BooleanField("point de retrait des commandes en ligne", default=False)
     is_default = models.BooleanField("dépôt par défaut", default=False)

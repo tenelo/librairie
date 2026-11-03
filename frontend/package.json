@@ -4,11 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start:backoffice": "ng serve backoffice",
-    "start:boutique": "ng serve boutique",
-    "build": "ng build backoffice && ng build boutique",
+    "build": "ng build backoffice",
     "build:backoffice": "ng build backoffice",
-    "build:boutique": "ng build boutique",
-    "test": "ng test shared --watch=false --browsers=ChromeHeadless && ng test backoffice --watch=false --browsers=ChromeHeadless && ng test boutique --watch=false --browsers=ChromeHeadless"
+    "test": "ng test shared --watch=false --browsers=ChromeHeadless && ng test backoffice --watch=false --browsers=ChromeHeadless"
   },
   "prettier": {
     "printWidth": 100,

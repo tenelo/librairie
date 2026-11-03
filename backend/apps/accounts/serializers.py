@@ -4,8 +4,9 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.settings_app.models import LibrarySettings
+from apps.stock.models import Library
 
-from .catalog import CLIENT
+from .catalog import ADMIN, CLIENT
 from .models import Device, Permission, Role, User, normalize_phone, pin_validator
 
 
@@ -42,6 +43,12 @@ class RoleSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "code", "is_staff_role", "user_count"]
 
 
+class LibrarySummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Library
+        fields = ["id", "name", "location"]
+
+
 def effective_offline_hours(user):
     return user.offline_max_hours or LibrarySettings.load().offline_max_hours
 
@@ -54,6 +61,9 @@ class ProfileSerializer(serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
     has_pin = serializers.BooleanField(read_only=True)
     offline_max_hours = serializers.SerializerMethodField()
+    library = LibrarySummarySerializer(read_only=True, allow_null=True)
+    all_libraries = serializers.SerializerMethodField(
+        help_text="Vrai si l'utilisateur voit toutes les librairies (administrateur ou sans librairie).")
 
     class Meta:
         model = User
@@ -71,6 +81,8 @@ class ProfileSerializer(serializers.ModelSerializer):
             "offline_max_hours",
             "must_change_password",
             "is_superuser",
+            "library",
+            "all_libraries",
         ]
         read_only_fields = [
             "id",
@@ -82,7 +94,12 @@ class ProfileSerializer(serializers.ModelSerializer):
             "offline_max_hours",
             "must_change_password",
             "is_superuser",
+            "library",
+            "all_libraries",
         ]
+
+    def get_all_libraries(self, obj) -> bool:
+        return obj.restricted_library is None
 
     def get_permissions(self, obj) -> list[str]:
         return sorted(obj.get_app_permissions())
@@ -137,6 +154,12 @@ class VerifyPinSerializer(serializers.Serializer):
     permission = serializers.CharField(required=False, allow_blank=True)
 
 
+class VerifyPasswordSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(trim_whitespace=False)
+    permission = serializers.CharField(required=False, allow_blank=True)
+
+
 class RegisterSerializer(serializers.Serializer):
     """Inscription d'un client de la boutique en ligne (téléphone + mot de passe)."""
 
@@ -181,6 +204,8 @@ class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     password = serializers.CharField(write_only=True, required=False, trim_whitespace=False)
     has_pin = serializers.BooleanField(read_only=True)
+    library = serializers.PrimaryKeyRelatedField(queryset=Library.objects.all(), allow_null=True, required=False)
+    library_name = serializers.CharField(source="library.name", read_only=True, default=None)
 
     class Meta:
         model = User
@@ -194,6 +219,8 @@ class UserSerializer(serializers.ModelSerializer):
             "phone",
             "role",
             "role_label",
+            "library",
+            "library_name",
             "is_active",
             "offline_max_hours",
             "must_change_password",
@@ -202,7 +229,7 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
             "password",
         ]
-        read_only_fields = ["id", "full_name", "role_label", "has_pin", "last_login", "date_joined"]
+        read_only_fields = ["id", "full_name", "role_label", "library_name", "has_pin", "last_login", "date_joined"]
 
     def validate_phone(self, value):
         phone = normalize_phone(value)
@@ -216,6 +243,14 @@ class UserSerializer(serializers.ModelSerializer):
         if attrs.get("password"):
             candidate = self.instance or User(username=attrs.get("username", ""))
             validate_password(attrs["password"], candidate)
+        # Dès qu'une librairie existe, chaque membre du personnel (hors administrateur) y est rattaché.
+        role = attrs.get("role", getattr(self.instance, "role", None))
+        library = attrs.get("library", getattr(self.instance, "library", None))
+        staff_role = role is not None and role.is_staff_role and role.code != ADMIN
+        if staff_role and library is None and Library.objects.filter(is_active=True).exists():
+            raise serializers.ValidationError({"library": "Choisissez la librairie de cet utilisateur."})
+        if library is not None and not library.is_active and library != getattr(self.instance, "library", None):
+            raise serializers.ValidationError({"library": "Cette librairie est désactivée."})
         return attrs
 
     def create(self, validated_data):
@@ -240,6 +275,7 @@ class DeviceSerializer(serializers.ModelSerializer):
     code = serializers.CharField(max_length=10)
     registered_by_name = serializers.CharField(source="registered_by.get_full_name", read_only=True, default=None)
     depot_code = serializers.CharField(source="depot.code", read_only=True, default=None)
+    library_name = serializers.CharField(source="depot.library.name", read_only=True, default=None)
 
     class Meta:
         model = Device
@@ -250,6 +286,7 @@ class DeviceSerializer(serializers.ModelSerializer):
             "kind",
             "depot",
             "depot_code",
+            "library_name",
             "is_active",
             "last_seen_at",
             "last_sync_at",
