@@ -342,6 +342,7 @@ cd frontend && npm test                 # Jasmine/Karma, Chrome headless (shared
 ```bash
 cd backend
 .venv/Scripts/python.exe manage.py seed_demo            # environ 3 minutes ; --days 30 pour aller plus vite
+.venv/Scripts/python.exe manage.py seed_demo_tontines   # ensuite : 12 souscriptions de tontine avec versements
 ```
 
 La commande crée (sans rien écraser, et sans effet si elle a déjà été exécutée) :
