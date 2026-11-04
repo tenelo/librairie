@@ -56,8 +56,9 @@ export interface ServerSale {
     </header>
     <div class="toolbar">
       <input type="search" [(ngModel)]="term" (keyup.enter)="load()" (input)="onSearchInput()" placeholder="N° de reçu, client" aria-label="Rechercher" />
-      <select [value]="printer.format()" (change)="printer.setFormat($any($event.target).value)" aria-label="Format">
-        @for (f of formats; track f) { <option [value]="f">{{ formatLabels[f] }}</option> }
+      <select (change)="printer.setFormat($any($event.target).value)" aria-label="Format">
+        <!-- [selected] sur chaque option : la liste affiche le format réellement enregistré sur ce poste. -->
+        @for (f of formats; track f) { <option [value]="f" [selected]="f === printer.format()">{{ formatLabels[f] }}</option> }
       </select>
     </div>
     <table class="list">
