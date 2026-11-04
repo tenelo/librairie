@@ -11,7 +11,7 @@ import {
   SimpleChartComponent,
 } from '@librairie/shared';
 
-import { formatValue, formatVariation } from '../stats/report-format';
+import { formatValue } from '../stats/report-format';
 import { DashboardData, ReportsApiService } from '../stats/reports-api.service';
 import { ONLINE_SALES_ENABLED } from '../../features';
 
@@ -48,10 +48,7 @@ export function localDaySummary(sales: { sold_at: string; total: number }[], tod
     @if (network.online() && data(); as d) {
       <div class="kpis">
         @for (k of d.kpis; track k.key) {
-          <div><span>{{ k.label }}</span><strong>{{ format(k.value, k.kind) }}</strong>
-            @if (k.variation !== null && k.variation !== undefined) {
-              <small [class.up]="k.variation > 0" [class.down]="k.variation < 0">{{ variation(k.variation) }} vs période précédente</small>
-            }</div>
+          <div><span>{{ k.label }}</span><strong>{{ format(k.value, k.kind) }}</strong></div>
         }
         <div><span>Alertes stock</span><strong>{{ d.alerts.out }} rupture(s) · {{ d.alerts.low }} bas</strong>
           <small><a routerLink="/stock/alertes">Voir les alertes</a></small></div>
@@ -103,8 +100,6 @@ export function localDaySummary(sales: { sold_at: string; total: number }[], tod
   styles: `
     .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
     .kpis small { display: block; font-size: 12px; opacity: 0.8; }
-    .kpis small.up { color: #2e7d32; opacity: 1; }
-    .kpis small.down { color: var(--mat-sys-error); opacity: 1; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
     .orders { list-style: none; padding: 0; }
     .orders li { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--mat-sys-outline-variant); }
@@ -123,7 +118,6 @@ export class ActivityPanelComponent {
   protected readonly data = signal<DashboardData | null>(null);
   protected readonly localSummary = signal<LocalDaySummary>({ count: 0, revenue: 0, average: 0 });
   protected format = formatValue;
-  protected variation = formatVariation;
 
   constructor() {
     effect(() => {
