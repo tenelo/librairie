@@ -29,6 +29,11 @@ import { ONLINE_SALES_ENABLED } from '../../features';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1>Paramètres librairie et reçus</h1>
+    <p class="intro">
+      Identité et reçu communs à toutes les librairies. Chaque librairie peut avoir son propre reçu
+      (adresse, téléphone, pied de page…) dans Administration › Librairies : ses champs remplis
+      remplacent ceux-ci sur les reçus de ses caisses.
+    </p>
     @if (loading()) {
       <mat-progress-bar mode="indeterminate" />
     }
@@ -110,6 +115,10 @@ import { ONLINE_SALES_ENABLED } from '../../features';
     </form>
   `,
   styles: `
+    .intro {
+      opacity: 0.8;
+      max-width: 820px;
+    }
     mat-card {
       margin-bottom: 16px;
     }

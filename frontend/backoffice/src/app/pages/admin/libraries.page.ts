@@ -46,6 +46,47 @@ import { Library, StockApiService, apiErrorMessage } from '@librairie/shared';
           @if (editing()) {
             <mat-slide-toggle formControlName="is_active">Active</mat-slide-toggle>
           }
+          <h3 class="full">Reçu de cette librairie</h3>
+          <p class="help full">
+            Imprimé par les caisses de cette librairie. Un champ laissé vide reprend la valeur de
+            Administration › Paramètres librairie et reçus.
+          </p>
+          <mat-form-field>
+            <mat-label>Nom sur le reçu</mat-label>
+            <input matInput formControlName="receipt_name" placeholder="ETS MASSA — Ferké" />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Ville</mat-label>
+            <input matInput formControlName="city" />
+          </mat-form-field>
+          <mat-form-field class="full">
+            <mat-label>Adresse</mat-label>
+            <input matInput formControlName="address" />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Téléphone</mat-label>
+            <input matInput formControlName="phone" inputmode="tel" />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>E-mail</mat-label>
+            <input matInput formControlName="email" type="email" />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>N° compte contribuable</mat-label>
+            <input matInput formControlName="taxpayer_number" />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>RCCM</mat-label>
+            <input matInput formControlName="trade_register" />
+          </mat-form-field>
+          <mat-form-field class="full">
+            <mat-label>En-tête du reçu</mat-label>
+            <textarea matInput formControlName="receipt_header" rows="2"></textarea>
+          </mat-form-field>
+          <mat-form-field class="full">
+            <mat-label>Pied de page du reçu</mat-label>
+            <textarea matInput formControlName="receipt_footer" rows="2"></textarea>
+          </mat-form-field>
           <div class="actions">
             @if (editing()) {
               <button mat-button type="button" (click)="reset()">Annuler</button>
@@ -112,6 +153,15 @@ import { Library, StockApiService, apiErrorMessage } from '@librairie/shared';
       align-items: center;
       padding-top: 12px;
     }
+    .full {
+      grid-column: 1 / -1;
+    }
+    h3.full {
+      margin: 8px 0 0;
+    }
+    p.help.full {
+      margin: 0 0 12px;
+    }
     .actions {
       display: flex;
       justify-content: flex-end;
@@ -139,6 +189,15 @@ export class LibrariesPage {
     name: ['', [Validators.required, Validators.maxLength(100)]],
     location: ['', Validators.maxLength(150)],
     is_active: [true],
+    receipt_name: ['', Validators.maxLength(150)],
+    address: ['', Validators.maxLength(255)],
+    city: ['', Validators.maxLength(100)],
+    phone: ['', Validators.maxLength(50)],
+    email: ['', Validators.email],
+    taxpayer_number: ['', Validators.maxLength(50)],
+    trade_register: ['', Validators.maxLength(50)],
+    receipt_header: [''],
+    receipt_footer: [''],
   });
 
   constructor() {
@@ -147,12 +206,18 @@ export class LibrariesPage {
 
   protected edit(library: Library): void {
     this.editing.set(library.id);
-    this.form.reset({ name: library.name, location: library.location, is_active: library.is_active });
+    this.form.reset({
+      name: library.name, location: library.location, is_active: library.is_active,
+      receipt_name: library.receipt_name ?? '', address: library.address ?? '', city: library.city ?? '',
+      phone: library.phone ?? '', email: library.email ?? '', taxpayer_number: library.taxpayer_number ?? '',
+      trade_register: library.trade_register ?? '', receipt_header: library.receipt_header ?? '',
+      receipt_footer: library.receipt_footer ?? '',
+    });
   }
 
   protected reset(): void {
     this.editing.set(null);
-    this.form.reset({ name: '', location: '', is_active: true });
+    this.form.reset();
   }
 
   protected save(): void {

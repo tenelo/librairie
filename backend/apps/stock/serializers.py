@@ -22,7 +22,8 @@ class LibrarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Library
-        fields = ["id", "name", "location", "is_active", "depot_count", "user_count", "sync_version", "updated_at"]
+        fields = ["id", "name", "location", "is_active", *Library.RECEIPT_FIELDS, "depot_count", "user_count",
+                  "sync_version", "updated_at"]
         read_only_fields = ["sync_version", "updated_at"]
         validators = []
 

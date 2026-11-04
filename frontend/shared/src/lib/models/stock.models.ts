@@ -47,6 +47,16 @@ export interface Library {
   name: string;
   location: string;
   is_active: boolean;
+  /** Reçu de cette librairie : un champ vide reprend la valeur des paramètres généraux. */
+  receipt_name?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  taxpayer_number?: string;
+  trade_register?: string;
+  receipt_header?: string;
+  receipt_footer?: string;
   depot_count?: number;
   user_count?: number;
 }
