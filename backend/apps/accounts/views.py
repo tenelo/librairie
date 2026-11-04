@@ -1,4 +1,5 @@
-from django.db.models import Count
+from django.db import transaction
+from django.db.models import Count, ProtectedError
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import mixins, serializers, status, viewsets
@@ -319,8 +320,9 @@ class RoleViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Updat
 
 
 class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,
-                  mixins.UpdateModelMixin, viewsets.GenericViewSet):
-    """Gestion des utilisateurs. Pas de suppression : un utilisateur se désactive."""
+                  mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    """Gestion des utilisateurs. Suppression réservée aux comptes jamais utilisés (créés par erreur) ;
+    un compte qui a servi se désactive, pour garder son historique."""
 
     serializer_class = UserSerializer
     permission_classes = [HasAppPermission]
@@ -358,6 +360,25 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Creat
             new_values={"role": user.role_code, "is_active": user.is_active,
                         "library": user.library.name if user.library_id else None},
         )
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        if user == request.user:
+            return Response({"detail": "Vous ne pouvez pas supprimer votre propre compte."}, status=400)
+        in_use = Response({"detail": "Cet utilisateur s'est déjà connecté ou a un historique : "
+                                     "désactivez-le plutôt."}, status=400)
+        # Un compte qui s'est connecté peut avoir des opérations hors ligne pas encore synchronisées.
+        if user.last_login is not None:
+            return in_use
+        username, user_id = user.username, str(user.pk)
+        try:
+            with transaction.atomic():
+                user.delete()
+        except ProtectedError:
+            return in_use
+        log_event(AuditLog.Action.DELETE, request=request, entity="User", entity_id=user_id,
+                  description=f"Suppression de l'utilisateur {username}", old_values={"username": username})
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(request=None, responses=UserSerializer)
     @action(detail=True, methods=["post"])

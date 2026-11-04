@@ -66,6 +66,11 @@ export class AdminApiService {
     return this.http.post<ManagedUser>(`${this.api}/accounts/users/${id}/${active ? 'activate' : 'deactivate'}/`, {});
   }
 
+  /** Suppression : refusée par le serveur si le compte s'est déjà connecté ou a un historique. */
+  deleteUser(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.api}/accounts/users/${id}/`);
+  }
+
 
   listRoles(): Observable<Role[]> {
     return this.http.get<Role[]>(`${this.api}/accounts/roles/`);
