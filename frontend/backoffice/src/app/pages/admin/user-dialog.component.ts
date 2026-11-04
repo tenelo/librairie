@@ -44,7 +44,7 @@ export interface UserDialogData {
             }
           </mat-select>
         </mat-form-field>
-        <mat-form-field subscriptSizing="dynamic">
+        <mat-form-field subscriptSizing="dynamic" class="full">
           <mat-label>Librairie</mat-label>
           <mat-select formControlName="library">
             <mat-option [value]="null">— Toutes les librairies —</mat-option>
@@ -58,12 +58,12 @@ export interface UserDialogData {
           </mat-hint>
         </mat-form-field>
         <mat-form-field>
-          <mat-label>Prénom</mat-label>
-          <input matInput formControlName="first_name" />
-        </mat-form-field>
-        <mat-form-field>
           <mat-label>Nom</mat-label>
           <input matInput formControlName="last_name" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Prénom</mat-label>
+          <input matInput formControlName="first_name" />
         </mat-form-field>
         <mat-form-field>
           <mat-label>Téléphone</mat-label>
