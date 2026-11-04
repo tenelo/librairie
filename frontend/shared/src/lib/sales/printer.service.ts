@@ -92,7 +92,7 @@ export class BrowserPrinter implements ReceiptPrinter {
         @media print {
           body { background: #fff; }
           .receipt-tab-bar { display: none; }
-          .receipt-tab-host { margin: 0; box-shadow: none; }
+          .receipt-tab-host { margin: 0 auto; box-shadow: none; }
         }
       </style></head><body>
       <div class="receipt-tab-bar"><button type="button" class="main" id="receipt-print">Imprimer</button>
