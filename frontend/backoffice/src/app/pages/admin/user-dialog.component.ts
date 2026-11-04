@@ -44,7 +44,7 @@ export interface UserDialogData {
             }
           </mat-select>
         </mat-form-field>
-        <mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
           <mat-label>Librairie</mat-label>
           <mat-select formControlName="library">
             <mat-option [value]="null">— Toutes les librairies —</mat-option>
@@ -77,7 +77,7 @@ export interface UserDialogData {
           <mat-label>{{ data.user ? 'Nouveau mot de passe (facultatif)' : 'Mot de passe' }}</mat-label>
           <input matInput formControlName="password" type="password" autocomplete="new-password" />
         </mat-form-field>
-        <mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
           <mat-label>Durée max. hors ligne (h)</mat-label>
           <input matInput formControlName="offline_max_hours" type="number" min="1" />
           <mat-hint>Vide : valeur des paramètres</mat-hint>
