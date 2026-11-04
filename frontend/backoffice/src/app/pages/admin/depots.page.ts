@@ -29,8 +29,8 @@ import { ONLINE_SALES_ENABLED } from '../../features';
           <mat-form-field>
             <mat-label>Type</mat-label>
             <mat-select formControlName="kind">
-              <mat-option value="BOUTIQUE">Magasin / boutique</mat-option>
-              <mat-option value="RESERVE">Réserve</mat-option>
+              <mat-option value="BOUTIQUE">En boutique (stock en rayon, vendu en caisse)</mat-option>
+              <mat-option value="RESERVE">Magasin (arrière-boutique, stock de réserve)</mat-option>
             </mat-select>
           </mat-form-field>
           <mat-form-field>

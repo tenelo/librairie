@@ -54,7 +54,7 @@ def test_subscription_freezes_prices_and_target(auth_client, cashier_user, suppl
     client = auth_client(cashier_user)
     tontine = subscribe(client, [(cahier, 10), (stylo, 10)])
     assert tontine["number"].startswith("TS-") and tontine["target_amount"] == 6500
-    assert tontine["subscriber_name"] == "Konan Awa" and tontine["depot_name"] == "Magasin"
+    assert tontine["subscriber_name"] == "Konan Awa" and tontine["depot_name"] == "En boutique"
     assert tontine["remaining"] == 6500 and tontine["status"] == "OPEN"
     # Une hausse de prix ultérieure ne change pas le montant souscrit.
     cahier.retail_price = 600
