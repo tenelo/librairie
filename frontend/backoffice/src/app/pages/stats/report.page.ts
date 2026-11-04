@@ -4,11 +4,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute } from '@angular/router';
 import { Depot, SimpleChartComponent, StockApiService, apiErrorMessage, saveBlob } from '@librairie/shared';
 
-import { formatValue, formatVariation, presetRange } from './report-format';
+import { formatValue, presetRange } from './report-format';
 import { ReportData, ReportFilters, ReportTable, ReportsApiService } from './reports-api.service';
 import { LibraryScopeService } from '../../services/library-scope.service';
 import { ScheduledReportsComponent } from './scheduled-reports.component';
@@ -29,7 +30,7 @@ const SALES_GROUPS = [
 @Component({
   selector: 'bo-report-page',
   imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCardModule, MatIconModule, SimpleChartComponent,
-    ScheduledReportsComponent],
+    ScheduledReportsComponent, MatPaginatorModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="page-header">
@@ -81,10 +82,6 @@ const SALES_GROUPS = [
           <div>
             <span>{{ item.label }}</span>
             <strong>{{ format(item.value, item.kind) }}</strong>
-            @if (item.variation !== undefined && item.variation !== null) {
-              <small [class.up]="item.variation > 0" [class.down]="item.variation < 0">
-                {{ variation(item.variation) }} vs période précédente</small>
-            }
           </div>
         }
       </div>
@@ -110,9 +107,11 @@ const SALES_GROUPS = [
                 </tbody>
               </table>
             </div>
-            @if (t.rows.length > 25) {
-              <button mat-button type="button" (click)="toggleExpand(t.key)">
-                {{ expanded().includes(t.key) ? 'Réduire' : 'Afficher les ' + t.rows.length + ' lignes' }}</button>
+            @if (t.rows.length > pageSizes[0]) {
+              <!-- Tableau paginé : sa hauteur reste la même, quel que soit le nombre de lignes. -->
+              <mat-paginator [length]="t.rows.length" [pageIndex]="pageOf(t.key).index" [pageSize]="pageOf(t.key).size"
+                             [pageSizeOptions]="pageSizes" [showFirstLastButtons]="true"
+                             (page)="onPage(t.key, $event)" aria-label="Pages du tableau" />
             }
           </mat-card-content>
         </mat-card>
@@ -126,9 +125,6 @@ const SALES_GROUPS = [
   styles: `
     .filters, .groups { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
     .filters input, .filters select { font: inherit; padding: 4px; }
-    .kpis small { display: block; font-size: 12px; opacity: 0.8; }
-    .kpis small.up { color: #2e7d32; opacity: 1; }
-    .kpis small.down { color: var(--mat-sys-error); opacity: 1; }
     .block { margin-top: 16px; }
     .table-wrap { overflow-x: auto; }
   `,
@@ -145,7 +141,9 @@ export class ReportPage implements OnInit {
   protected readonly depots = signal<Depot[]>([]);
   protected readonly preset = signal<string | null>('30d');
   protected readonly groups = signal<string[]>(['day', 'channel', 'payment', 'category']);
-  protected readonly expanded = signal<string[]>([]);
+  /** Page affichée de chaque tableau (10 lignes par défaut). */
+  protected readonly pageSizes = [10, 25, 50, 100];
+  private readonly pages = signal<Record<string, { index: number; size: number }>>({});
   protected filters: ReportFilters = { ...presetRange('30d'), depot: null, library: null };
 
   ngOnInit(): void {
@@ -158,7 +156,11 @@ export class ReportPage implements OnInit {
     this.error.set(null);
     const filters = this.name === 'sales' ? { ...this.filters, groups: this.groups().join(',') } : this.filters;
     this.api.report(this.name, filters).subscribe({
-      next: (data) => this.data.set(data),
+      next: (data) => {
+        // Nouvelles données : chaque tableau revient à sa première page (taille choisie conservée).
+        this.pages.update((p) => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, { ...v, index: 0 }])));
+        this.data.set(data);
+      },
       error: (err: unknown) => {
         this.data.set(null);
         this.error.set(apiErrorMessage(err));
@@ -182,12 +184,17 @@ export class ReportPage implements OnInit {
     this.load();
   }
 
-  protected toggleExpand(key: string): void {
-    this.expanded.update((e) => (e.includes(key) ? e.filter((k) => k !== key) : [...e, key]));
+  protected pageOf(key: string): { index: number; size: number } {
+    return this.pages()[key] ?? { index: 0, size: this.pageSizes[0] };
+  }
+
+  protected onPage(key: string, event: PageEvent): void {
+    this.pages.update((p) => ({ ...p, [key]: { index: event.pageIndex, size: event.pageSize } }));
   }
 
   protected visibleRows(table: ReportTable): Record<string, unknown>[] {
-    return this.expanded().includes(table.key) ? table.rows : table.rows.slice(0, 25);
+    const { index, size } = this.pageOf(table.key);
+    return table.rows.slice(index * size, (index + 1) * size);
   }
 
   protected kindOf(table: ReportTable, key: string): string {
@@ -195,7 +202,6 @@ export class ReportPage implements OnInit {
   }
 
   protected format = formatValue;
-  protected variation = formatVariation;
 
   protected download(format: 'xlsx' | 'pdf'): void {
     const filters = this.name === 'sales' ? { ...this.filters, groups: this.groups().join(',') } : this.filters;
