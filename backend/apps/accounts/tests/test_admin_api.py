@@ -1,4 +1,5 @@
 import pytest
+from django.utils import timezone
 
 from apps.accounts.models import Device, User
 from apps.audit.models import AuditLog
@@ -30,7 +31,30 @@ def test_admin_creates_and_deactivates_user(auth_client, admin_user):
     assert response.status_code == 200
     user.refresh_from_db()
     assert user.is_active is False
-    assert client.delete(f"/api/accounts/users/{user.id}/").status_code == 405
+
+
+def test_admin_deletes_unused_user_only(auth_client, admin_user, cashier_user):
+    client = auth_client(admin_user)
+    response = client.post(
+        "/api/accounts/users/",
+        {"username": "erreur1", "role": "MAGASINIER", "password": "Reserve-Stock-2026"},
+        format="json",
+    )
+    assert response.status_code == 201, response.content
+    created = User.objects.get(username="erreur1")
+    assert client.delete(f"/api/accounts/users/{created.id}/").status_code == 204
+    assert not User.objects.filter(username="erreur1").exists()
+    assert AuditLog.objects.filter(entity="User", action=AuditLog.Action.DELETE).exists()
+
+    # Compte déjà utilisé : on le désactive, on ne le supprime pas.
+    User.objects.filter(pk=cashier_user.pk).update(last_login=timezone.now())
+    response = client.delete(f"/api/accounts/users/{cashier_user.id}/")
+    assert response.status_code == 400
+    assert User.objects.filter(pk=cashier_user.pk).exists()
+
+    # Ni son propre compte, ni sans la permission de gérer les utilisateurs.
+    assert client.delete(f"/api/accounts/users/{admin_user.id}/").status_code == 400
+    assert auth_client(cashier_user).delete(f"/api/accounts/users/{admin_user.id}/").status_code == 403
 
 
 def test_password_required_on_creation(auth_client, admin_user):

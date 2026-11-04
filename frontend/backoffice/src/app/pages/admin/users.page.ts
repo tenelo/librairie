@@ -106,6 +106,9 @@ import { liveSearch } from '../../shared/live-search';
                 <mat-icon>{{ u.is_active ? 'person_off' : 'person' }}</mat-icon>
                 {{ u.is_active ? 'Désactiver' : 'Réactiver' }}
               </button>
+              <button mat-menu-item type="button" (click)="remove(u)">
+                <mat-icon>delete</mat-icon> Supprimer
+              </button>
             </mat-menu>
           </td>
         </ng-container>
@@ -183,6 +186,19 @@ export class UsersPage {
   toggleActive(user: ManagedUser): void {
     this.api.setUserActive(user.id, !user.is_active).subscribe({
       next: () => this.reload(),
+      error: (err: unknown) => this.fail(err),
+    });
+  }
+
+  remove(user: ManagedUser): void {
+    if (!confirm(`Supprimer l'utilisateur « ${user.full_name || user.username} » ?`)) {
+      return;
+    }
+    this.api.deleteUser(user.id).subscribe({
+      next: () => {
+        this.snack.open('Utilisateur supprimé.');
+        this.reload();
+      },
       error: (err: unknown) => this.fail(err),
     });
   }
