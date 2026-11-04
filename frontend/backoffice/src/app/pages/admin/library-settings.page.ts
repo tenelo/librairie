@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -8,10 +8,16 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { LibrarySettings, apiErrorMessage } from '@librairie/shared';
+import { MatTableModule } from '@angular/material/table';
+import { RouterLink } from '@angular/router';
+import { Library, LibrarySettings, StockApiService, apiErrorMessage } from '@librairie/shared';
 
 import { AdminApiService } from '../../services/admin-api.service';
 import { ONLINE_SALES_ENABLED } from '../../features';
+
+const RECEIPT_FIELDS = ['receipt_name', 'address', 'city', 'phone', 'email', 'taxpayer_number', 'trade_register',
+  'receipt_header', 'receipt_footer'] as const;
+type ReceiptField = (typeof RECEIPT_FIELDS)[number];
 
 /** Paramètres de la librairie : identité, mentions des reçus, délais et synchronisation. */
 @Component({
@@ -25,6 +31,8 @@ import { ONLINE_SALES_ENABLED } from '../../features';
     MatButtonModule,
     MatProgressBarModule,
     MatSelectModule,
+    MatTableModule,
+    RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -113,6 +121,45 @@ import { ONLINE_SALES_ENABLED } from '../../features';
         </button>
       </div>
     </form>
+
+    <h2>Reçus par librairie</h2>
+    <p class="intro">
+      Ce qu'imprime chaque librairie. <span class="common">En gris</span> : valeur commune (paramètres ci-dessus),
+      le champ de la librairie étant vide.
+    </p>
+    <div class="table-wrapper">
+      <table mat-table [dataSource]="receipts()">
+        <ng-container matColumnDef="library">
+          <th mat-header-cell *matHeaderCellDef>Librairie</th>
+          <td mat-cell *matCellDef="let r">
+            <strong>{{ r.library.name }}</strong>
+            @if (r.library.location) { <br /><small>{{ r.library.location }}</small> }
+            @if (!r.library.is_active) { <br /><small>Désactivée</small> }
+          </td>
+        </ng-container>
+        @for (c of receiptColumns; track c.key) {
+          <ng-container [matColumnDef]="c.key">
+            <th mat-header-cell *matHeaderCellDef>{{ c.label }}</th>
+            <td mat-cell *matCellDef="let r">
+              @for (f of c.fields; track f) {
+                <div [class.common]="!r.own[f]">{{ r.value[f] || '—' }}</div>
+              }
+            </td>
+          </ng-container>
+        }
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let r">
+            <a mat-button routerLink="/administration/librairies" [queryParams]="{ modifier: r.library.id }">Modifier</a>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell" [attr.colspan]="columns.length">Aucune librairie : créez-les dans Administration › Librairies.</td>
+        </tr>
+      </table>
+    </div>
   `,
   styles: `
     .intro {
@@ -135,6 +182,18 @@ import { ONLINE_SALES_ENABLED } from '../../features';
     .actions {
       display: flex;
       justify-content: flex-end;
+    }
+    h2 {
+      margin: 24px 0 4px;
+    }
+    .common {
+      opacity: 0.55;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+    }
+    td div {
+      white-space: pre-line;
     }
   `,
 })
@@ -169,7 +228,36 @@ export class LibrarySettingsPage {
   });
   protected readonly roundingSteps = [1, 5, 10, 25, 50, 100];
 
+  /** Reçu imprimé par chaque librairie : ses champs remplis, sinon la valeur commune enregistrée. */
+  private readonly saved = signal<LibrarySettings | null>(null);
+  private readonly libraries = signal<Library[]>([]);
+  protected readonly receiptColumns: { key: string; label: string; fields: ReceiptField[] }[] = [
+    { key: 'name', label: 'Nom sur le reçu', fields: ['receipt_name'] },
+    { key: 'address', label: 'Adresse · ville', fields: ['address', 'city'] },
+    { key: 'contact', label: 'Téléphone · e-mail', fields: ['phone', 'email'] },
+    { key: 'legal', label: 'NCC · RCCM', fields: ['taxpayer_number', 'trade_register'] },
+    { key: 'texts', label: 'En-tête · pied de page', fields: ['receipt_header', 'receipt_footer'] },
+  ];
+  protected readonly columns = ['library', ...this.receiptColumns.map((c) => c.key), 'actions'];
+  protected readonly receipts = computed(() => {
+    const settings = this.saved();
+    return this.libraries().map((library) => {
+      const own = {} as Record<ReceiptField, boolean>;
+      const value = {} as Record<ReceiptField, string>;
+      for (const field of RECEIPT_FIELDS) {
+        const mine = library[field] ?? '';
+        own[field] = !!mine;
+        value[field] = mine || String(settings?.[field === 'receipt_name' ? 'name' : field] ?? '');
+      }
+      return { library, own, value };
+    });
+  });
+
   constructor() {
+    inject(StockApiService).listLibraries().subscribe({
+      next: (libraries) => this.libraries.set(libraries),
+      error: (err: unknown) => this.fail(err),
+    });
     this.api.getSettings().subscribe({
       next: (settings) => this.fill(settings),
       error: (err: unknown) => this.fail(err),
@@ -189,6 +277,7 @@ export class LibrarySettingsPage {
   }
 
   private fill(settings: LibrarySettings): void {
+    this.saved.set(settings);
     this.form.reset({
       name: settings.name,
       city: settings.city,
