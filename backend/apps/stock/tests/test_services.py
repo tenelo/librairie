@@ -30,12 +30,12 @@ Kind = StockMovement.Kind
 
 @pytest.fixture
 def mag():
-    return Depot.objects.get(code="MAG")
+    return Depot.objects.get(code="BTQ")
 
 
 @pytest.fixture
 def res():
-    return Depot.objects.get(code="RES")
+    return Depot.objects.get(code="MAG")
 
 
 def test_seeded_depots(mag, res):

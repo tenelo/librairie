@@ -16,7 +16,7 @@ URL = "/api/sales/tontines/"
 
 @pytest.fixture
 def mag():
-    return Depot.objects.get(code="MAG")
+    return Depot.objects.get(code="BTQ")
 
 
 @pytest.fixture

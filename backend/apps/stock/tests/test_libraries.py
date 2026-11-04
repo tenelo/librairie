@@ -21,11 +21,11 @@ def libraries():
     """Librairie A (dépôt MAG), librairie B (dépôt BMAG) et entrepôt général (RES, sans librairie)."""
     lib_a = Library.objects.create(name="Librairie A", location="Cocody")
     lib_b = Library.objects.create(name="Librairie B", location="Yopougon")
-    mag = Depot.objects.get(code="MAG")
+    mag = Depot.objects.get(code="BTQ")
     mag.library = lib_a
     mag.save()
     bmag = Depot.objects.create(code="BMAG", name="Magasin B", library=lib_b)
-    central = Depot.objects.get(code="RES")
+    central = Depot.objects.get(code="MAG")
     return lib_a, lib_b, mag, bmag, central
 
 

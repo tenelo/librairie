@@ -216,9 +216,9 @@ class Command(BaseCommand):
     # --- Référentiels -------------------------------------------------------------------------
 
     def reference_data(self):
-        self.depot = Depot.objects.get(code="MAG")
+        self.depot = Depot.objects.get(code="BTQ")
         Depot.objects.filter(pk=self.depot.pk).update(is_pickup_point=True)
-        self.reserve = Depot.objects.filter(code="RES").first()
+        self.reserve = Depot.objects.filter(code="MAG").first()
         self.locations = []
         for index, (code, label) in enumerate([("A1", "Cahiers"), ("A2", "Écriture"), ("B1", "Géométrie"),
                                                ("B2", "Papeterie"), ("C1", "Livres"), ("C2", "Kits")]):

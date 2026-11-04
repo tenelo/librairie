@@ -16,7 +16,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def mag():
-    return Depot.objects.get(code="MAG")
+    return Depot.objects.get(code="BTQ")
 
 
 @pytest.fixture

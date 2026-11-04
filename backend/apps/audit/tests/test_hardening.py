@@ -139,4 +139,4 @@ def test_frontend_permissions_exist_on_the_server():
 
 
 def test_depot_fixture_exists():
-    assert Depot.objects.filter(code="MAG").exists()
+    assert Depot.objects.filter(code="BTQ").exists()
