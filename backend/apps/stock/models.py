@@ -22,6 +22,20 @@ class Library(SyncModel):
     name = models.CharField("libellé", max_length=100)
     location = models.CharField("quartier / commune", max_length=150, blank=True)
     is_active = models.BooleanField("active", default=True)
+    # Reçus imprimés par les terminaux de cette librairie. Champ vide : valeur des paramètres généraux.
+    receipt_name = models.CharField("nom sur le reçu", max_length=150, blank=True)
+    address = models.CharField("adresse", max_length=255, blank=True)
+    city = models.CharField("ville", max_length=100, blank=True)
+    phone = models.CharField("téléphone", max_length=50, blank=True)
+    email = models.EmailField("e-mail", blank=True)
+    taxpayer_number = models.CharField("numéro de compte contribuable", max_length=50, blank=True)
+    trade_register = models.CharField("RCCM", max_length=50, blank=True)
+    receipt_header = models.TextField("en-tête du reçu", blank=True)
+    receipt_footer = models.TextField("pied de page du reçu", blank=True)
+
+    # Champs du reçu propres à la librairie (repris par les terminaux, hors connexion compris).
+    RECEIPT_FIELDS = ("receipt_name", "address", "city", "phone", "email", "taxpayer_number", "trade_register",
+                      "receipt_header", "receipt_footer")
 
     class Meta:
         ordering = ["name"]

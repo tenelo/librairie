@@ -62,6 +62,17 @@ export interface LocalSale extends LocalRecord {
   };
 }
 
+/** Reçu d'une librairie : chaque champ vide de la librairie reprend la valeur des paramètres généraux. */
+export function receiptLibrary(settings: Partial<SyncedRow> | null, own: Partial<SyncedRow> | null): ReceiptLibrary {
+  const text = (key: string, libraryKey = key) => String(own?.[libraryKey] || settings?.[key] || '');
+  return {
+    name: text('name', 'receipt_name') || 'Librairie', logo: (settings?.['logo'] as string | null) ?? null,
+    address: text('address'), city: text('city'), phone: text('phone'), email: text('email'),
+    taxpayer_number: text('taxpayer_number'), trade_register: text('trade_register'),
+    receipt_header: text('receipt_header'), receipt_footer: text('receipt_footer'),
+  };
+}
+
 /**
  * Enregistrement des ventes sur le terminal : numérotation hors ligne, copie locale (historique,
  * réimpression, rapport Z), outbox avec les variations de stock, puis envoi immédiat si en ligne.
@@ -76,15 +87,19 @@ export class PosService {
   private readonly auth = inject(AuthService);
   private readonly devices = inject(DeviceService);
 
+  /**
+   * En-tête et pied des reçus : ceux de la librairie du terminal (librairie de son dépôt, à défaut celle
+   * de l'utilisateur), chaque champ vide reprenant la valeur des paramètres généraux. Lu en base locale.
+   */
   async library(): Promise<ReceiptLibrary> {
-    const settings = (await this.local.db.settings.toCollection().first()) ?? ({} as SyncedRow);
-    const text = (key: string) => String(settings[key] ?? '');
-    return {
-      name: text('name') || 'Librairie', logo: (settings['logo'] as string | null) ?? null, address: text('address'),
-      city: text('city'), phone: text('phone'), email: text('email'), taxpayer_number: text('taxpayer_number'),
-      trade_register: text('trade_register'), receipt_header: text('receipt_header'),
-      receipt_footer: text('receipt_footer'),
-    };
+    return receiptLibrary((await this.local.db.settings.toCollection().first()) ?? null, (await this.ownLibrary()) ?? null);
+  }
+
+  private async ownLibrary(): Promise<SyncedRow | undefined> {
+    const depotId = this.devices.device()?.depot ?? null;
+    const depot = depotId ? await this.local.db.depots.get(depotId) : undefined;
+    const libraryId = depot?.['library'] ? String(depot['library']) : this.auth.user()?.library?.id ?? null;
+    return libraryId ? this.local.db.libraries.get(libraryId) : undefined;
   }
 
   async setting(key: string, fallback: number): Promise<number> {

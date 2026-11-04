@@ -186,3 +186,19 @@ def test_reports_are_limited_to_the_employee_library(libraries):
     assert period.depot is None and period.library == lib_b
     assert period.as_dict()["depot_name"] == "Librairie B"
     assert reports.Period.from_params({}).as_dict()["depot_name"] == "Toutes les librairies"
+
+
+def test_library_receipt_details_reach_the_terminals(auth_client, admin_user, libraries):
+    lib_a = libraries[0]
+    client = auth_client(admin_user)
+    response = client.patch(f"/api/stock/libraries/{lib_a.pk}/",
+                            {"address": "Rue du Commerce", "city": "Ferkessédougou", "phone": "0700000000",
+                             "receipt_footer": "Merci, à bientôt à Ferké !"}, format="json")
+    assert response.status_code == 200, response.content
+    assert response.json()["city"] == "Ferkessédougou"
+
+    rows = client.get("/api/sync/pull/?entities=libraries").json()["changes"]["libraries"]
+    row = next(r for r in rows if r["id"] == str(lib_a.pk))
+    assert row["address"] == "Rue du Commerce"
+    assert row["receipt_footer"] == "Merci, à bientôt à Ferké !"
+    assert row["receipt_name"] == ""  # vide : le terminal reprend le nom des paramètres

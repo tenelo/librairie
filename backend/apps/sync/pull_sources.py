@@ -88,7 +88,8 @@ def register_core_sources():
                              "is_pickup_point": o.is_pickup_point, "is_active": o.is_active,
                              "library": str(o.library_id) if o.library_id else None})
     register_pull("libraries", lambda: Library.all_objects.all(),
-                  lambda o: {**base(o), "name": o.name, "location": o.location, "is_active": o.is_active})
+                  lambda o: {**base(o), "name": o.name, "location": o.location, "is_active": o.is_active,
+                             **{field: getattr(o, field) for field in Library.RECEIPT_FIELDS}})
     # Prix propres aux librairies : le terminal applique celui de la librairie de son dépôt.
     register_pull("library_prices", lambda: ArticleLibraryPrice.all_objects.all(),
                   lambda o: {**base(o), "article": str(o.article_id), "library": str(o.library_id),
