@@ -500,7 +500,9 @@ class Command(BaseCommand):
             elif target == "PICKED_UP":
                 self.pickup(order, index)
 
+    @transaction.atomic
     def pickup(self, order, index):
+        # Retrait à la caisse dans une transaction, comme une requête de l'API (verrous sur PostgreSQL).
         device = self.devices[0]
         cashier = self.staff["caissier1"]
         now = timezone.now()
