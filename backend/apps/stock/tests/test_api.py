@@ -13,12 +13,12 @@ Kind = StockMovement.Kind
 
 @pytest.fixture
 def mag():
-    return Depot.objects.get(code="MAG")
+    return Depot.objects.get(code="BTQ")
 
 
 @pytest.fixture
 def res():
-    return Depot.objects.get(code="RES")
+    return Depot.objects.get(code="MAG")
 
 
 @pytest.fixture
@@ -144,4 +144,4 @@ def test_alerts_and_summary(auth_client, storekeeper, mag):
 def test_device_can_be_attached_to_depot(auth_client, admin_user, mag):
     response = auth_client(admin_user).post("/api/accounts/devices/", {"code": "C01", "name": "Caisse 1",
                                                                        "depot": str(mag.pk)}, format="json")
-    assert response.status_code == 201 and response.json()["depot_code"] == "MAG"
+    assert response.status_code == 201 and response.json()["depot_code"] == "BTQ"

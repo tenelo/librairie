@@ -20,7 +20,7 @@ TS = "2026-10-08T10:00:00Z"
 
 @pytest.fixture
 def mag():
-    return Depot.objects.get(code="MAG")
+    return Depot.objects.get(code="BTQ")
 
 
 @pytest.fixture
