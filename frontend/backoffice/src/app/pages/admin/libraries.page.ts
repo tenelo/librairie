@@ -10,6 +10,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute } from '@angular/router';
 import { Library, StockApiService, apiErrorMessage } from '@librairie/shared';
 
 /**
@@ -252,7 +253,17 @@ export class LibrariesPage {
     });
   }
 
+  /** Librairie à ouvrir en arrivant depuis « Reçus par librairie » (?modifier=<id>), une seule fois. */
+  private linked: string | null = inject(ActivatedRoute).snapshot.queryParamMap.get('modifier');
+
   private load(): void {
-    this.api.listLibraries().subscribe((libraries) => this.libraries.set(libraries));
+    this.api.listLibraries().subscribe((libraries) => {
+      this.libraries.set(libraries);
+      const library = this.linked ? libraries.find((l) => l.id === this.linked) : undefined;
+      this.linked = null;
+      if (library) {
+        this.edit(library);
+      }
+    });
   }
 }
