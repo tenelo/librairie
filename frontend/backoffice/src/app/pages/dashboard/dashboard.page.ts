@@ -14,8 +14,10 @@ import { ActivityPanelComponent } from './activity-panel.component';
   imports: [MatCardModule, MatIconModule, RouterLink, DatePipe, ActivityPanelComponent, TontineKpisComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Bonjour {{ auth.user()?.first_name || auth.user()?.username }}</h1>
-    <p class="subtitle">{{ auth.user()?.role?.label }} · {{ today | date: 'EEEE d MMMM y' }}</p>
+    <div class="hello">
+      <h1>Bonjour {{ auth.user()?.first_name || auth.user()?.username }}</h1>
+      <span class="date">{{ today | date: 'EEEE d MMMM y' }}</span>
+    </div>
 
     <section class="status">
       <mat-card appearance="outlined">
@@ -74,13 +76,21 @@ import { ActivityPanelComponent } from './activity-panel.component';
     </section>
   `,
   styles: `
+    .hello {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
     h1 {
       margin: 0;
+      font-size: 22px;
+      line-height: 1.3;
     }
-    .subtitle {
-      margin: 4px 0 24px;
+    .date {
       opacity: 0.75;
-      text-transform: capitalize;
     }
     .status {
       display: grid;
