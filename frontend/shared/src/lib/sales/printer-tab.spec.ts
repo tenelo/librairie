@@ -38,6 +38,19 @@ describe('impression des reçus dans un onglet', () => {
     expect(document.querySelector('.receipt-tab-host')).toBeNull();
   });
 
+  it("recopie dans l'onglet la mise en forme du reçu (styles du composant)", async () => {
+    const tab = document.implementation.createHTMLDocument('');
+    const fakeTab = { document: tab, print: () => undefined, close: () => undefined,
+      focus: () => undefined } as unknown as Window;
+    spyOn(window, 'open').and.returnValue(fakeTab);
+
+    await printer.print(RECEIPT, 'THERMAL_80');
+
+    const css = [...tab.querySelectorAll('style')].map((node) => node.textContent ?? '').join('\n');
+    expect(css).toContain('Roboto Mono');
+    expect(css).toContain('80mm');
+  });
+
   it("imprime depuis la page si l'onglet est bloqué par le navigateur", async () => {
     spyOn(window, 'open').and.returnValue(null);
     const pagePrint = spyOn(window, 'print');

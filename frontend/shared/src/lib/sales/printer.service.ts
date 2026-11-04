@@ -72,10 +72,11 @@ export class BrowserPrinter implements ReceiptPrinter {
 
   private async printInTab(tab: Window, receipt: ReceiptData, format: ReceiptFormat): Promise<void> {
     const { html, cleanup } = await this.render(receipt, format, 'receipt-tab-host');
-    cleanup();
-    // Styles de l'application (dont ceux du composant reçu) recopiés dans l'onglet.
+    // Styles de l'application (dont ceux du composant reçu) recopiés dans l'onglet. À lire AVANT
+    // cleanup() : Angular retire de la page les styles d'un composant dès qu'il est détruit.
     const styles = [...document.querySelectorAll('style, link[rel="stylesheet"]')]
       .map((node) => node.outerHTML).join('\n');
+    cleanup();
     const doc = tab.document;
     doc.open();
     doc.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Reçu ${receipt.number}</title>
