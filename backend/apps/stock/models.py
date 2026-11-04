@@ -51,8 +51,8 @@ class Library(SyncModel):
 
 class Depot(SyncModel):
     class Kind(models.TextChoices):
-        BOUTIQUE = "BOUTIQUE", "Magasin / boutique"
-        RESERVE = "RESERVE", "Réserve"
+        BOUTIQUE = "BOUTIQUE", "En boutique"
+        RESERVE = "RESERVE", "Magasin"
 
     code = models.CharField("code", max_length=10, unique=True)
     name = models.CharField("nom", max_length=100)
