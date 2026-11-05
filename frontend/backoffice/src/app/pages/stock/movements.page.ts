@@ -112,8 +112,9 @@ export class MovementsPage implements OnInit {
   private readonly snack = inject(MatSnackBar);
 
   /** Titre et types imposés (réutilisé par d'autres écrans, ex. historique des pertes). */
-  readonly title = input('Mouvements de stock');
-  readonly fixedKinds = input<MovementKind[]>([]);
+  // Page routée (withComponentInputBinding) : le routeur passe `undefined` à ces entrées, d'où les défauts forcés.
+  readonly title = input('Mouvements de stock', { transform: (v: string | undefined) => v || 'Mouvements de stock' });
+  readonly fixedKinds = input<MovementKind[], MovementKind[] | undefined>([], { transform: (v) => v ?? [] });
 
   protected readonly kindLabels = MOVEMENT_KIND_LABELS;
   protected readonly allKinds = Object.keys(MOVEMENT_KIND_LABELS) as MovementKind[];
