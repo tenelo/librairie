@@ -149,6 +149,18 @@
   }
 }
 
+// Téléphone : le libellé de la librairie est masqué (icône seule, libellé en infobulle).
+@media (max-width: 599px) {
+  .device-label {
+    display: none;
+  }
+
+  .toolbar {
+    gap: 2px;
+    padding: 0 4px;
+  }
+}
+
 // Impression (étiquettes, reçus, listes) : seule la page est imprimée.
 @media print {
   .sidenav,
