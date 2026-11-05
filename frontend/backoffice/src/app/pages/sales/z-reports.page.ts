@@ -55,7 +55,7 @@ interface ZReport {
   imports: [DatePipe, FormsModule, MatButtonModule, MatIconModule, MatPaginatorModule, FcfaPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Rapports caisse</h1>
+    <h1>Rapports caisses</h1>
     @if (!network.online()) {
       <p class="offline-note">Hors connexion : le rapport caisse de la caisse en cours s'imprime depuis « Ouverture / Clôture ».</p>
     }
@@ -92,7 +92,7 @@ interface ZReport {
       </tbody>
     </table>
     <mat-paginator [length]="total()" [pageIndex]="page()" [pageSize]="pageSize()" [pageSizeOptions]="[10, 25, 50, 100]"
-                   [showFirstLastButtons]="true" (page)="onPage($event)" aria-label="Pages des rapports caisse" />
+                   [showFirstLastButtons]="true" (page)="onPage($event)" aria-label="Pages des rapports caisses" />
   `,
   styleUrl: './sales-page.scss',
   styles: `
