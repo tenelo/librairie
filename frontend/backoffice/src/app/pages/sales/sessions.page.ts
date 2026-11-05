@@ -60,7 +60,7 @@ import { LibraryScopeService } from '../../services/library-scope.service';
         <input type="text" [(ngModel)]="notes" placeholder="Remarques de clôture" class="notes" aria-label="Remarques" />
         <div class="form-row">
           <button mat-stroked-button type="button" (click)="printX()"><mat-icon>print</mat-icon> Rapport X (intermédiaire)</button>
-          <button mat-flat-button type="button" (click)="close()"><mat-icon>lock</mat-icon> Clôturer et imprimer le rapport Z</button>
+          <button mat-flat-button type="button" (click)="close()"><mat-icon>lock</mat-icon> Clôturer et imprimer le rapport caisse</button>
         </div>
       </div>
     } @else {

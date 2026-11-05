@@ -125,12 +125,24 @@ class CashSessionSerializer(serializers.ModelSerializer):
                   "variance", "z_number", "notes"]
 
 
+class CashSessionFilter(django_filters.FilterSet):
+    """Rapports caisse : par librairie et par jour d'ouverture (date_from / date_to au format AAAA-MM-JJ)."""
+
+    library = django_filters.UUIDFilter(field_name="depot__library")
+    date_from = django_filters.DateFilter(field_name="opened_at", lookup_expr="date__gte")
+    date_to = django_filters.DateFilter(field_name="opened_at", lookup_expr="date__lte")
+
+    class Meta:
+        model = CashSession
+        fields = ["device", "status", "depot", "depot__library", "library", "date_from", "date_to"]
+
+
 class CashSessionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CashSessionSerializer
     permission_classes = [IsStaffMember, HasAppPermission]
     required_permissions = {"*": "cash.z_report", "list": "cash.open_close", "retrieve": "cash.open_close",
                             "z_report": "cash.open_close"}
-    filterset_fields = ["device", "status", "depot", "depot__library"]
+    filterset_class = CashSessionFilter
 
     def get_queryset(self):
         queryset = CashSession.objects.select_related("device", "depot", "opened_by", "closed_by")
