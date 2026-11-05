@@ -72,7 +72,7 @@
       <span class="spacer"></span>
       @if (libraryScope.label(); as libraryLabel) {
         <span class="device" matTooltip="Librairie de l'utilisateur connecté">
-          <mat-icon inline>storefront</mat-icon> {{ libraryLabel }}
+          <mat-icon inline>storefront</mat-icon> <span class="device-label">{{ libraryLabel }}</span>
         </span>
       }
       @if (device(); as d) {

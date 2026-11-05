@@ -10,13 +10,14 @@ import { SyncStatusService } from '../sync/sync-status.service';
   imports: [DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <span class="pill" [class.offline]="!network.online()" role="status" aria-live="polite">
+    <span class="pill" [class.offline]="!network.online()" role="status" aria-live="polite"
+          [title]="network.online() ? 'En ligne' : 'Hors ligne'">
       <span class="dot"></span>
-      {{ network.online() ? 'En ligne' : 'Hors ligne' }}
+      <span class="lbl">{{ network.online() ? 'En ligne' : 'Hors ligne' }}</span>
     </span>
     @if (showSync()) {
       <span class="pill" [class.pending]="sync.hasPending()" title="Opérations en attente de synchronisation">
-        {{ sync.pendingCount() }} en attente
+        {{ sync.pendingCount() }}<span class="lbl">&nbsp;en attente</span>
       </span>
       <span class="last-sync" title="Dernière synchronisation">
         @if (sync.lastSyncAt(); as last) {
@@ -33,7 +34,16 @@ import { SyncStatusService } from '../sync/sync-status.service';
       align-items: center;
       gap: 8px;
       font-size: 13px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+    }
+    /* Téléphone : pastilles réduites (point de couleur, nombre en attente) pour tenir sur une ligne. */
+    @media (max-width: 599px) {
+      .lbl {
+        display: none;
+      }
+      .pill {
+        padding: 2px 8px;
+      }
     }
     .pill {
       display: inline-flex;
