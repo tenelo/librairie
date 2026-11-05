@@ -111,3 +111,23 @@ class SyncModel(models.Model):
     def hard_delete(self):
         """Suppression physique, réservée aux tests et aux données non métiers."""
         return super().delete()
+
+
+class CodeSetting(models.Model):
+    """Préfixe et nombre de chiffres choisis pour un type de code (voir `apps.core.numbering.CODE_RULES`).
+
+    Une ligne n'existe que si l'administrateur a modifié les valeurs par défaut. Les compteurs restent
+    gérés par le serveur (`SyncCounter`) : on ne peut pas les modifier ici.
+    """
+
+    key = models.CharField("type de code", max_length=10, unique=True)
+    prefix = models.CharField("préfixe", max_length=6)
+    width = models.PositiveSmallIntegerField("nombre de chiffres", default=5)
+    updated_at = models.DateTimeField("modifié le", auto_now=True)
+
+    class Meta:
+        verbose_name = "paramètre de code"
+        verbose_name_plural = "paramètres des codes"
+
+    def __str__(self):
+        return f"{self.key} → {self.prefix}"

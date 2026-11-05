@@ -178,6 +178,7 @@ const ALL_MENU: MenuSection[] = [
         requiresOnline: true },
       { label: 'Paramètres librairie et reçus', path: 'parametres', permission: 'settings.manage',
         requiresOnline: true },
+      { label: 'Codes et numérotation', path: 'codes', permission: 'settings.manage', requiresOnline: true },
       { label: 'Notifications', path: 'notifications', permission: 'settings.manage', requiresOnline: true },
       { label: 'Installation', path: 'installation', permission: 'settings.manage' },
     ],
