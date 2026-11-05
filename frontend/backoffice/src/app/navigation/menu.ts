@@ -47,7 +47,7 @@ const ALL_MENU: MenuSection[] = [
       { label: 'Historique des ventes', path: 'historique', permission: 'sales.view' },
       { label: 'Retours', path: 'retours', permission: 'sales.return' },
       { label: 'Ouverture / Clôture', path: 'sessions', permission: 'cash.open_close' },
-      { label: 'Rapports caisse', path: 'rapports-z', permission: 'cash.z_report' },
+      { label: 'Rapports caisses', path: 'rapports-z', permission: 'cash.z_report' },
     ],
   },
   {
