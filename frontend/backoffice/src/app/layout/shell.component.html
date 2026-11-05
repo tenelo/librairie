@@ -91,7 +91,10 @@
       </button>
       <button mat-button type="button" [matMenuTriggerFor]="userMenu" class="user-button">
         <mat-icon>account_circle</mat-icon>
-        <span class="user-name">{{ auth.user()?.full_name }}</span>
+        <span class="user-name">
+          <span>{{ auth.user()?.full_name }}</span>
+          @if (auth.user()?.role?.label; as role) { <small class="user-role">{{ role }}</small> }
+        </span>
       </button>
       <mat-menu #userMenu="matMenu" xPosition="before">
         <div class="menu-header">
