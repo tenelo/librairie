@@ -28,6 +28,11 @@ interface ServerSession {
   z_number: string;
 }
 
+interface FilterOptions {
+  devices: { id: string; code: string }[];
+  cashiers: { id: string; name: string }[];
+}
+
 interface ZReport {
   z_number: string;
   device: string | null;
@@ -60,17 +65,29 @@ interface ZReport {
       <p class="offline-note">Hors connexion : le rapport caisse de la caisse en cours s'imprime depuis « Ouverture / Clôture ».</p>
     }
     <div class="toolbar filters">
-      <label>Du <input type="date" [(ngModel)]="dateFrom" (change)="load(0)" /></label>
-      <label>au <input type="date" [(ngModel)]="dateTo" (change)="load(0)" /></label>
+      <label>Du <input type="date" [(ngModel)]="dateFrom" (change)="reloadAll()" /></label>
+      <label>au <input type="date" [(ngModel)]="dateTo" (change)="reloadAll()" /></label>
       @if (scope.seesAll()) {
         <label>Librairie
-          <select [(ngModel)]="library" (change)="load(0)">
+          <select [(ngModel)]="library" (change)="reloadAll()">
             @for (o of scope.reportOptions(); track o.value) { <option [ngValue]="o.value">{{ o.label }}</option> }
           </select>
         </label>
       } @else {
         <span>Librairie : <strong>{{ scope.label() }}</strong></span>
       }
+      <label>Caisse
+        <select [(ngModel)]="device" (change)="load(0)">
+          <option value="">Toutes</option>
+          @for (d of options().devices; track d.id) { <option [value]="d.id">{{ d.code }}</option> }
+        </select>
+      </label>
+      <label>Caissier
+        <select [(ngModel)]="cashier" (change)="load(0)">
+          <option value="">Tous</option>
+          @for (c of options().cashiers; track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+        </select>
+      </label>
     </div>
     <table class="list">
       <thead><tr><th>Rapport</th><th>Terminal</th><th>Période</th><th class="num">Attendu</th><th class="num">Compté</th><th class="num">Écart</th><th></th></tr></thead>
@@ -115,15 +132,36 @@ export class ZReportsPage {
   protected dateFrom = presetRange('30d').date_from;
   protected dateTo = presetRange('30d').date_to;
   protected library = '';
+  protected device = '';
+  protected cashier = '';
+  /** Caisses et caissiers présents sur la période et la librairie choisies. */
+  protected readonly options = signal<FilterOptions>({ devices: [], cashiers: [] });
 
   constructor() {
     this.scope.load();
-    this.load(0);
+    this.reloadAll();
   }
 
-  protected load(page = this.page()): void {
-    this.page.set(page);
-    const params: Record<string, string | number> = { page: page + 1, page_size: this.pageSize() };
+  /** Période ou librairie changée : listes Caisse / Caissier mises à jour, puis première page. */
+  protected reloadAll(): void {
+    this.http.get<FilterOptions>(`${this.api}/sales/sessions/filter-options/`, { params: this.baseParams() }).subscribe({
+      next: (options) => {
+        this.options.set(options);
+        // Un choix qui n'existe plus sur la nouvelle période est retiré.
+        if (this.device && !options.devices.some((d) => d.id === this.device)) {
+          this.device = '';
+        }
+        if (this.cashier && !options.cashiers.some((c) => c.id === this.cashier)) {
+          this.cashier = '';
+        }
+        this.load(0);
+      },
+      error: () => this.load(0),
+    });
+  }
+
+  private baseParams(): Record<string, string> {
+    const params: Record<string, string> = {};
     if (this.dateFrom) {
       params['date_from'] = this.dateFrom;
     }
@@ -132,6 +170,18 @@ export class ZReportsPage {
     }
     if (this.library) {
       params['library'] = this.library;
+    }
+    return params;
+  }
+
+  protected load(page = this.page()): void {
+    this.page.set(page);
+    const params: Record<string, string | number> = { ...this.baseParams(), page: page + 1, page_size: this.pageSize() };
+    if (this.device) {
+      params['device'] = this.device;
+    }
+    if (this.cashier) {
+      params['cashier'] = this.cashier;
     }
     this.http.get<Paginated<ServerSession>>(`${this.api}/sales/sessions/`, { params }).subscribe({
       next: (result) => {
