@@ -131,22 +131,39 @@ class CashSessionFilter(django_filters.FilterSet):
     library = django_filters.UUIDFilter(field_name="depot__library")
     date_from = django_filters.DateFilter(field_name="opened_at", lookup_expr="date__gte")
     date_to = django_filters.DateFilter(field_name="opened_at", lookup_expr="date__lte")
+    cashier = django_filters.UUIDFilter(field_name="opened_by")
 
     class Meta:
         model = CashSession
-        fields = ["device", "status", "depot", "depot__library", "library", "date_from", "date_to"]
+        fields = ["device", "status", "depot", "depot__library", "library", "date_from", "date_to", "cashier"]
 
 
 class CashSessionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CashSessionSerializer
     permission_classes = [IsStaffMember, HasAppPermission]
     required_permissions = {"*": "cash.z_report", "list": "cash.open_close", "retrieve": "cash.open_close",
-                            "z_report": "cash.open_close"}
+                            "z_report": "cash.open_close", "filter_options": "cash.open_close"}
     filterset_class = CashSessionFilter
 
     def get_queryset(self):
         queryset = CashSession.objects.select_related("device", "depot", "opened_by", "closed_by")
         return filter_by_depots(queryset, own_depot_ids(self.request.user))
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    @action(detail=False, methods=["get"], url_path="filter-options")
+    def filter_options(self, request):
+        """Caisses et caissiers présents dans les sessions visibles (listes des filtres des rapports caisses)."""
+        sessions = self.filter_queryset(self.get_queryset()).order_by()
+        devices = sessions.exclude(device=None).values("device", "device__code").distinct()
+        cashiers = sessions.values("opened_by", "opened_by__first_name", "opened_by__last_name",
+                                   "opened_by__username").distinct()
+        return Response({
+            "devices": sorted(({"id": str(d["device"]), "code": d["device__code"]} for d in devices),
+                              key=lambda d: d["code"]),
+            "cashiers": sorted(({"id": str(c["opened_by"]),
+                                 "name": f"{c['opened_by__first_name']} {c['opened_by__last_name']}".strip()
+                                 or c["opened_by__username"]} for c in cashiers), key=lambda c: c["name"].lower()),
+        })
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["get"], url_path="z-report")

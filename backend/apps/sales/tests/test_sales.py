@@ -282,6 +282,12 @@ def test_cash_reports_filter_by_date_and_library(auth_client, cashier_user, mag,
     assert client.get(url, {"date_from": "2026-10-01", "date_to": "2026-10-01"}).json()["count"] == 1
     assert client.get(url, {"date_from": "2026-10-02"}).json()["count"] == 0
     assert client.get(url, {"library": str(uuid.uuid4())}).json()["count"] == 0
+    assert client.get(url, {"cashier": str(cashier_user.pk)}).json()["count"] == 1
+    assert client.get(url, {"cashier": str(uuid.uuid4())}).json()["count"] == 0
+    assert client.get(url, {"device": str(till.pk)}).json()["count"] == 1
+    options = client.get(url + "filter-options/").json()
+    assert [d["code"] for d in options["devices"]] == [till.code]
+    assert [c["id"] for c in options["cashiers"]] == [str(cashier_user.pk)]
 
 
 def test_single_open_session_per_till(auth_client, cashier_user, mag, till):
