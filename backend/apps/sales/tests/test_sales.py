@@ -270,6 +270,20 @@ def test_cash_session_close_and_z_report(auth_client, cashier_user, mag, till):
     assert push(client, [("sale", "create", late)], ts="2099-01-01T00:00:00Z")[0]["status"] == "error"
 
 
+def test_cash_reports_filter_by_date_and_library(auth_client, cashier_user, mag, till):
+    from datetime import datetime, timezone as tz
+
+    from apps.sales.models import CashSession
+
+    client = auth_client(cashier_user)
+    session = open_session(client, mag)
+    CashSession.objects.filter(pk=session).update(opened_at=datetime(2026, 10, 1, 8, 0, tzinfo=tz.utc))
+    url = "/api/sales/sessions/"
+    assert client.get(url, {"date_from": "2026-10-01", "date_to": "2026-10-01"}).json()["count"] == 1
+    assert client.get(url, {"date_from": "2026-10-02"}).json()["count"] == 0
+    assert client.get(url, {"library": str(uuid.uuid4())}).json()["count"] == 0
+
+
 def test_single_open_session_per_till(auth_client, cashier_user, mag, till):
     client = auth_client(cashier_user)
     open_session(client, mag)

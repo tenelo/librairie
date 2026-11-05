@@ -182,7 +182,7 @@ export class CashRegisterService {
     }
     extra.push({ label: 'Reçus', value: z.firstReceipt ? `${z.firstReceipt} → ${z.lastReceipt}` : '—' });
     return {
-      title: 'RAPPORT Z', number: zNumber, date: new Date().toISOString(), cashier: this.auth.user()?.full_name ?? '',
+      title: 'RAPPORT CAISSE', number: zNumber, date: new Date().toISOString(), cashier: this.auth.user()?.full_name ?? '',
       device: this.devices.device()?.code ?? '', customer: null, lines: [], subtotal: z.salesTotal, discountTotal: 0,
       total: z.salesTotal, payments: [], change: 0, loyaltyPoints: null, duplicate: false, extra, qrValue: null,
       library: await this.pos.library(),

@@ -423,7 +423,7 @@ def cash_report(period: Period) -> dict:
                                                  col("with_variance", "Avec écart", "int"), col("shortages", "Manques", "money"),
                                                  col("surpluses", "Excédents", "money"), col("variance", "Écart net", "money")],
               rows, {"type": "bar", "x": "label", "y": "variance"}),
-        table("sessions", "Clôtures", [col("label", "Rapport Z"), col("date", "Date", "date"), col("device", "Terminal"),
+        table("sessions", "Clôtures", [col("label", "Rapport caisse"), col("date", "Date", "date"), col("device", "Terminal"),
                                        col("cashier", "Caissier"), col("expected", "Attendu", "money"),
                                        col("counted", "Compté", "money"), col("variance", "Écart", "money")], detail),
     ])
