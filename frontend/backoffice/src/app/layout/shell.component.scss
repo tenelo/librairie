@@ -123,6 +123,21 @@
   margin: 0 auto;
 }
 
+// Nom et rôle sur deux lignes serrées : la hauteur du bouton (et de la bande) ne change pas.
+.user-name {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.user-role {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.75;
+}
+
 @media (max-width: 959px) {
   .page {
     padding: 16px;
