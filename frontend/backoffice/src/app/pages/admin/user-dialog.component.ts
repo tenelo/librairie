@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -10,6 +11,18 @@ import { Library, ManagedUser, Role, RoleCode, StockApiService, apiErrorMessage 
 import { Observable } from 'rxjs';
 
 import { AdminApiService } from '../../services/admin-api.service';
+
+/** Mots courts et faciles à dicter ; l'utilisateur change son mot de passe à la première connexion. */
+const PASSWORD_WORDS = ['Cahier', 'Stylo', 'Livre', 'Crayon', 'Gomme', 'Classeur', 'Ardoise', 'Compas', 'Feutre',
+  'Agenda', 'Carnet', 'Trousse'];
+
+/** Mot de passe simple : un mot + tiret + 4 chiffres (ex. « Cahier-4827 »), tiré au hasard. */
+export function generatePassword(): string {
+  const random = new Uint32Array(2);
+  crypto.getRandomValues(random);
+  const word = PASSWORD_WORDS[random[0] % PASSWORD_WORDS.length];
+  return `${word}-${String(1000 + (random[1] % 9000))}`;
+}
 
 export interface UserDialogData {
   user?: ManagedUser;
@@ -26,6 +39,7 @@ export interface UserDialogData {
     MatSelectModule,
     MatSlideToggleModule,
     MatButtonModule,
+    MatIconModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -73,9 +87,21 @@ export interface UserDialogData {
           <mat-label>E-mail</mat-label>
           <input matInput formControlName="email" type="email" />
         </mat-form-field>
-        <mat-form-field>
+        <mat-form-field [subscriptSizing]="data.user ? 'fixed' : 'dynamic'">
           <mat-label>{{ data.user ? 'Nouveau mot de passe (facultatif)' : 'Mot de passe' }}</mat-label>
-          <input matInput formControlName="password" type="password" autocomplete="new-password" />
+          <!-- Création : mot de passe proposé, visible pour être communiqué à l'utilisateur. -->
+          <input matInput formControlName="password" [type]="data.user ? 'password' : 'text'" autocomplete="new-password" />
+          @if (!data.user) {
+            <span matSuffix class="password-actions">
+              <button mat-icon-button type="button" (click)="copyPassword()" aria-label="Copier le mot de passe"
+                      title="Copier"><mat-icon>content_copy</mat-icon></button>
+              <button mat-icon-button type="button" (click)="newPassword()" aria-label="Générer un autre mot de passe"
+                      title="Générer un autre"><mat-icon>autorenew</mat-icon></button>
+            </span>
+          }
+          @if (!data.user) {
+            <mat-hint>{{ copied() ? 'Copié.' : 'À communiquer à l’utilisateur.' }}</mat-hint>
+          }
         </mat-form-field>
         <mat-form-field subscriptSizing="dynamic">
           <mat-label>Durée max. hors ligne (h)</mat-label>
@@ -107,6 +133,9 @@ export interface UserDialogData {
     .error {
       color: var(--mat-sys-error);
     }
+    .password-actions {
+      display: inline-flex;
+    }
   `,
 })
 export class UserDialogComponent {
@@ -125,7 +154,8 @@ export class UserDialogComponent {
     last_name: [this.data.user?.last_name ?? ''],
     phone: [this.data.user?.phone ?? ''],
     email: [this.data.user?.email ?? '', Validators.email],
-    password: ['', this.data.user ? [] : [Validators.required, Validators.minLength(8)]],
+    password: [this.data.user ? '' : generatePassword(),
+      this.data.user ? [] : [Validators.required, Validators.minLength(8)]],
     offline_max_hours: [this.data.user?.offline_max_hours ?? (null as number | null)],
     must_change_password: [this.data.user?.must_change_password ?? !this.data.user],
     library: [this.data.user?.library ?? (null as string | null)],
@@ -140,6 +170,20 @@ export class UserDialogComponent {
         this.form.controls.library.setValue(active[0].id);
       }
     });
+  }
+
+  protected readonly copied = signal(false);
+
+  protected newPassword(): void {
+    this.form.controls.password.setValue(generatePassword());
+    this.copied.set(false);
+  }
+
+  protected copyPassword(): void {
+    navigator.clipboard?.writeText(this.form.controls.password.value ?? '').then(
+      () => this.copied.set(true),
+      () => undefined,
+    );
   }
 
   save(): void {
