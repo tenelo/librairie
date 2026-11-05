@@ -11,7 +11,7 @@ from typing import Callable, Optional
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
-from apps.core.models import next_counter
+from apps.core.numbering import next_article_number
 from apps.core.money import apply_discount, round_fcfa, to_fcfa
 from apps.settings_app.models import LibrarySettings
 
@@ -31,9 +31,10 @@ PRICE_FIELDS = ("retail_price", "wholesale_price", "wholesale_min_qty", "avg_cos
 
 
 def next_article_code(article_type: str) -> str:
-    prefix = CODE_PREFIXES.get(article_type, "ART")
+    # Préfixe et nombre de chiffres réglables (Administration › Codes et numérotation).
+    key = CODE_PREFIXES.get(article_type, "ART")
     while True:
-        code = f"{prefix}-{next_counter(f'article.{prefix}'):05d}"
+        code = next_article_number(key)
         if not Article.all_objects.filter(code=code).exists():
             return code
 

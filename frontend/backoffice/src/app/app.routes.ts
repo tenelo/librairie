@@ -15,6 +15,7 @@ const IMPLEMENTED: Record<string, LazyComponent> = {
   'administration/librairies': () => import('./pages/admin/libraries.page').then((m) => m.LibrariesPage),
   'administration/parametres': () =>
     import('./pages/admin/library-settings.page').then((m) => m.LibrarySettingsPage),
+  'administration/codes': () => import('./pages/admin/codes.page').then((m) => m.CodesPage),
   'catalogue/articles': () => import('./pages/catalog/articles.page').then((m) => m.ArticlesPage),
   'catalogue/kits': () => import('./pages/catalog/kits.page').then((m) => m.KitsPage),
   'catalogue/categories': () => import('./pages/catalog/categories.page').then((m) => m.CategoriesPage),
